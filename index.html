@@ -2817,6 +2817,22 @@ body { background: #111; overflow: hidden; font-family: var(--sans); }
 <div class="nav-hint">&larr; &rarr; arrow keys to navigate</div>
 
 <script>
+/* Auto-fit 1920×1080 slide to any viewport */
+function fitSlide() {
+  const scaleX = window.innerWidth / 1920;
+  const scaleY = window.innerHeight / 1080;
+  const scale = Math.min(scaleX, scaleY);
+  document.querySelectorAll('.slide').forEach(s => {
+    s.style.transform = `scale(${scale})`;
+    s.style.transformOrigin = 'top left';
+  });
+  document.body.style.width = (1920 * scale) + 'px';
+  document.body.style.height = (1080 * scale) + 'px';
+  document.body.style.overflow = 'hidden';
+}
+fitSlide();
+window.addEventListener('resize', fitSlide);
+
 const slides = document.querySelectorAll('.slide');
 const TOTAL = slides.length;
 let current = 0;
