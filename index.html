@@ -45,7 +45,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #111; overflow: hidden; font-family: var(--sans); }
+body { background: #111; overflow: hidden; font-family: var(--sans); margin: 0; width: 100vw; height: 100vh; }
 
 /* ============================================================
    LAYER 2 — SLIDE SHELL + CHROME
@@ -2819,16 +2819,16 @@ body { background: #111; overflow: hidden; font-family: var(--sans); }
 <script>
 /* Auto-fit 1920×1080 slide to any viewport */
 function fitSlide() {
-  const scaleX = window.innerWidth / 1920;
-  const scaleY = window.innerHeight / 1080;
-  const scale = Math.min(scaleX, scaleY);
+  const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  const offsetX = (window.innerWidth - 1920 * scale) / 2;
+  const offsetY = (window.innerHeight - 1080 * scale) / 2;
   document.querySelectorAll('.slide').forEach(s => {
+    s.style.position = 'fixed';
     s.style.transform = `scale(${scale})`;
     s.style.transformOrigin = 'top left';
+    s.style.left = offsetX + 'px';
+    s.style.top = offsetY + 'px';
   });
-  document.body.style.width = (1920 * scale) + 'px';
-  document.body.style.height = (1080 * scale) + 'px';
-  document.body.style.overflow = 'hidden';
 }
 fitSlide();
 window.addEventListener('resize', fitSlide);
