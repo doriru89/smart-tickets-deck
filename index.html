@@ -1,0 +1,2936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Tickets — From Toll Booth to Platform</title>
+<style>
+/* System fonts only — no external dependencies */
+
+/* ============================================================
+   LAYER 1 — RESET + ROOT VARIABLES
+   ============================================================ */
+:root {
+  --yale: #00356B;
+  --yale-mid: #1a5a9e;
+  --yale-deep: #001f3f;
+  --yale-light: #e8eef6;
+  --cream: #F5F3EF;
+  --cream-warm: #EDE8DF;
+  --teal: #00756A;
+  --teal-light: #00D4AA;
+  --teal-bg: #e6f7f4;
+  --red: #C1292E;
+  --red-light: #E63946;
+  --red-bg: #fdf0f0;
+  --gold: #B8860B;
+  --gold-bg: #fdf6e3;
+  --text: #1a1a1a;
+  --text-dim: #6b7280;
+  --body-text: #444;
+  --border: #e5e2dc;
+  --white: #ffffff;
+  --serif: Georgia, 'Times New Roman', serif;
+  --body: Arial, Helvetica, sans-serif;
+  --sans: Arial, Helvetica, sans-serif;
+  --margin-x: 5%;
+  --gutter: 22px;
+  --radius: 8px;
+  --pad-box: 20px;
+  /* Typography tiers */
+  --t3: 12px;
+  --t4: 14px;
+  --t5: 11px;
+  --t6: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #111; overflow: hidden; font-family: var(--sans); }
+
+/* ============================================================
+   LAYER 2 — SLIDE SHELL + CHROME
+   ============================================================ */
+.slide {
+  width: 1920px; height: 1080px;
+  display: none; flex-direction: column;
+  overflow: hidden; position: relative;
+}
+.slide.active { display: flex; }
+
+.progress-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 6px;
+  z-index: 10; background: rgba(0,0,0,0.06);
+}
+.progress-fill { height: 100%; transition: width 0.4s ease; }
+
+.section-label {
+  position: absolute; top: 20px; right: var(--margin-x);
+  font-family: var(--sans); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; z-index: 10; opacity: 0.5;
+}
+
+.slide-counter {
+  position: absolute; bottom: 14px; right: var(--margin-x);
+  font-family: var(--sans); font-size: 10px; opacity: 0.3; z-index: 10;
+}
+
+/* ============================================================
+   LAYER 3 — LAYOUT PRIMITIVES
+   ============================================================ */
+.slide-title { font-family: var(--serif); font-weight: 700; font-size: 44px; line-height: 1.15; }
+.slide-subtitle { font-family: var(--body); font-size: 17px; margin-top: 4px; color: var(--text-dim); line-height: 1.5; }
+
+.slide-body {
+  flex: 1; display: flex; flex-direction: column; justify-content: flex-start;
+  padding: 42px var(--margin-x) 32px;
+  gap: 13px;
+  max-height: 1080px; overflow: hidden;
+}
+
+.content-zone {
+  display: grid; grid-template-columns: repeat(12, 1fr);
+  gap: var(--gutter); row-gap: 14px;
+  align-content: start; align-items: stretch; flex: 1;
+}
+
+/* Narrative slides: center content block with generous internal gaps */
+.slide-narrative .content-zone {
+  align-content: center;
+  row-gap: 27px;
+}
+
+.slide-footer {
+  font-size: var(--t6); color: var(--text-dim);
+  text-align: center; padding-top: 6px;
+  border-top: 1px solid var(--border); margin-top: auto; line-height: 1.4;
+}
+
+.nav-hint {
+  position: fixed; bottom: 6px; left: 50%; transform: translateX(-50%);
+  font-family: var(--sans); font-size: 10px; color: rgba(255,255,255,0.12); z-index: 20;
+}
+
+/* ============================================================
+   LAYER 4 — NARRATIVE SLIDE COMPONENTS
+   ============================================================ */
+
+/* --- S1: COVER --- */
+.s1 { background: var(--yale); color: var(--cream); justify-content: center; align-items: center; text-align: center; padding: 8%; }
+.s1 .hero-title { font-family: var(--serif); font-size: 78px; font-weight: 800; color: #fff; line-height: 1.05; }
+.s1 .hero-sub { font-family: var(--body); font-size: 30px; color: rgba(255,255,255,0.6); font-style: italic; margin-top: 22px; }
+.s1 .hero-bar { width: 60px; height: 3px; background: var(--teal-light); margin: 27px auto 0; border-radius: 2px; }
+.s1 .hero-meta { font-family: var(--sans); font-size: 15px; color: rgba(255,255,255,0.35); margin-top: 36px; }
+
+/* --- S2: THREE CRISES (newspaper) --- */
+.s2 { background: var(--cream); color: var(--text); }
+.s2 .content-zone { align-content: stretch; }
+.s2 .newspaper { grid-column: 1/13; display: flex; flex-direction: column; height: 100%; }
+.s2 .masthead { font-family: var(--serif); font-size: 13px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-dim); border-bottom: 3px double var(--text); padding-bottom: 10px; margin-bottom: 13px; text-align: center; }
+.s2 .headline { font-family: var(--serif); font-size: 56px; font-weight: 800; line-height: 1.08; text-align: center; color: var(--text); margin-bottom: 9px; }
+.s2 .subhead { font-family: var(--body); font-size: 18px; color: var(--text-dim); text-align: center; margin-bottom: 13px; padding-bottom: 11px; border-bottom: 1px solid var(--border); }
+.s2 .timeline-bar { display: flex; justify-content: center; gap: 16px; font-family: var(--sans); font-size: 15px; color: var(--text-dim); margin: 16px 0; }
+.s2 .tl-event { background: var(--white); border: 1px solid var(--border); border-radius: 4px; padding: 5px 14px; }
+.s2 .tl-event strong { color: var(--yale); }
+.s2 .tl-divider { color: var(--red); font-weight: 700; align-self: center; }
+.s2 .news-cols { display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; gap: 16px; font-family: var(--body); font-size: 18px; color: #333; line-height: 1.55; }
+.s2 .news-cols > div:not(.news-divider) { display: flex; flex-direction: column; }
+.s2 .news-col-body { flex: 1; }
+.s2 .news-divider { background: var(--border); }
+.s2 .news-col-head { font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.s2 .news-highlight { background: rgba(193,41,46,0.06); border-left: 3px solid var(--red); padding: 12px; margin-top: auto; border-radius: 0 4px 4px 0; font-size: 15px; line-height: 1.5; }
+.s2 .pull-quote { font-family: var(--serif); font-size: 32px; font-weight: 700; font-style: italic; color: var(--red); text-align: center; padding: 16px 40px; border-left: 4px solid var(--red); border-right: 4px solid var(--red); margin: auto 10% 0; }
+.s2 .quote-mark { font-size: 1.3em; opacity: 0.35; }
+.s2 .quote-attr { font-family: var(--sans); font-size: 13px; font-style: normal; font-weight: 400; color: var(--text-dim); margin-top: 5px; }
+.s2 .crisis-stats { display: flex; gap: var(--gutter); margin-top: 13px; padding-top: 13px; border-top: 2px solid var(--text); }
+.s2 .crisis-stat { flex: 1; text-align: center; }
+.s2 .crisis-num { font-family: var(--serif); font-size: 54px; font-weight: 800; line-height: 1.1; }
+.s2 .crisis-stat:nth-child(1) .crisis-num { color: var(--red); }
+.s2 .crisis-stat:nth-child(2) .crisis-num { color: var(--red); }
+.s2 .crisis-stat:nth-child(3) .crisis-num { color: var(--yale); }
+.s2 .crisis-label { font-family: var(--sans); font-size: 13px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+
+/* --- S4: COMPARISON TABLE --- */
+.s4 { background: var(--cream); color: var(--yale); }
+.s4 .slide-body { justify-content: flex-start; gap: 22px; }
+.s4 .content-zone { align-content: start; }
+.s4 .gap-stats { grid-column: 1/13; display: flex; gap: var(--gutter); margin-bottom: 5px; }
+.s4 .gap-stat { flex: 1; background: var(--white); border: 1px solid var(--border); border-radius: 6px; padding: 18px; text-align: center; }
+.s4 .gap-stat.bad { border-color: var(--red); border-left: 3px solid var(--red); }
+.s4 .gap-val { font-family: var(--serif); font-size: 38px; font-weight: 800; }
+.s4 .gap-stat.bad .gap-val { color: var(--red); }
+.s4 .gap-label { font-family: var(--sans); font-size: 13px; color: var(--text-dim); line-height: 1.4; margin-top: 4px; }
+.s4 .compare-table-wrap { grid-column: 1/13; overflow-x: auto; }
+.s4 .compare-table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 15px; }
+.s4 .compare-table th { padding: 14px 12px; font-weight: 700; text-align: center; border-bottom: 2px solid var(--border); font-size: 15px; vertical-align: bottom; }
+.s4 .compare-table th.winner { background: var(--teal-bg); border: 2px solid var(--teal); color: var(--teal); }
+.s4 .compare-table td { padding: 14px 12px; border-bottom: 1px solid var(--border); text-align: center; vertical-align: middle; }
+.s4 .compare-table td:first-child { text-align: left; font-size: 14px; }
+.s4 .compare-table td.winner-col { background: rgba(0,168,150,0.04); }
+.s4 .dim-why { font-size: 12px; color: var(--text-dim); display: block; margin-top: 2px; font-style: italic; }
+.s4 .check { color: var(--teal); font-weight: 700; font-size: 1.1em; }
+.s4 .cross { color: var(--red); font-weight: 700; font-size: 1.1em; }
+.s4 .partial { color: var(--gold); font-weight: 700; font-size: 1.1em; }
+.s4 .footnotes { grid-column: 1/13; font-family: var(--sans); font-size: 12px; color: var(--text-dim); display: flex; gap: 20px; }
+.s4 .takeaway { grid-column: 1/13; font-family: var(--serif); font-size: 20px; color: var(--teal); font-weight: 700; text-align: center; }
+.s4 .missing-row { grid-column: 1/13; display: flex; gap: var(--gutter); margin-top: auto; padding-top: 13px; border-top: 2px solid var(--text); }
+.s4 .missing-stat { flex: 1; text-align: center; }
+.s4 .missing-val { font-family: var(--serif); font-size: 38px; font-weight: 800; color: var(--red); }
+.s4 .missing-label { font-family: var(--sans); font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
+/* --- Shared card components (narrative slides) --- */
+.new-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 24px; display: flex; flex-direction: column; gap: 9px; }
+.new-card .card-head { font-family: var(--sans); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.new-card .card-body { font-family: var(--body); font-size: 17px; color: #444; line-height: 1.55; }
+.new-card .card-stat { font-family: var(--serif); font-size: 32px; font-weight: 800; }
+
+/* --- Phase cards (roadmap) --- */
+.phase-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gutter); }
+.phase-card { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 24px; display: flex; flex-direction: column; gap: 9px; border-top: 3px solid var(--teal); }
+.phase-card .phase-num { font-family: var(--sans); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--teal); }
+.phase-card .phase-title { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--yale); }
+.phase-card .phase-body { font-family: var(--body); font-size: 16px; color: #444; line-height: 1.55; }
+.phase-card .phase-date { font-family: var(--sans); font-size: 14px; font-weight: 700; color: var(--teal); margin-top: auto; }
+
+/* --- Verdict bar (shared) --- */
+.verdict-bar {
+  grid-column: 1/13; border-radius: var(--radius);
+  padding: 13px var(--pad-box); text-align: center;
+  font-family: var(--body); font-size: var(--t4); color: var(--yale); font-weight: 600; font-style: italic;
+}
+.info-bar {
+  grid-column: 1/13; background: var(--yale-light); border: 1px solid rgba(0,53,107,0.15);
+  border-radius: var(--radius); padding: 13px var(--pad-box);
+  font-size: var(--t4); color: var(--yale); text-align: center;
+}
+.note-box {
+  border-radius: var(--radius); border-left: 3px solid;
+  padding: 11px var(--pad-box);
+  font-size: var(--t4); color: var(--body-text); line-height: 1.5;
+}
+
+/* --- S15: RECOMMENDATION (close layout) --- */
+.s15 { background: var(--yale); color: var(--cream); justify-content: center; align-items: center; text-align: center; padding: 5% 8%; }
+.s15 .close-title { font-family: var(--serif); font-size: 52px; font-weight: 800; color: #fff; margin-bottom: 11px; }
+.s15 .close-sub { font-family: var(--body); font-size: 20px; color: rgba(255,255,255,0.55); font-style: italic; margin-bottom: 27px; }
+.s15 .close-actions { display: flex; flex-direction: column; gap: 13px; text-align: left; max-width: 800px; margin: 0 auto 27px; }
+.s15 .close-action { font-family: var(--body); font-size: 22px; color: rgba(255,255,255,0.85); line-height: 1.55; display: flex; gap: 14px; }
+.s15 .action-num { font-family: var(--serif); font-weight: 800; color: var(--teal-light); min-width: 28px; }
+.s15 .close-invest { font-family: var(--body); font-size: 18px; color: rgba(255,255,255,0.5); margin-bottom: 22px; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 16px; }
+.s15 .close-cta { font-family: var(--serif); font-size: 32px; font-weight: 700; color: var(--teal-light); margin-bottom: 16px; }
+.s15 .close-quote { font-family: var(--serif); font-size: 18px; color: rgba(255,255,255,0.35); font-style: italic; max-width: 680px; margin: 0 auto; line-height: 1.5; }
+
+/* ============================================================
+   LAYER 5 — DATA-VIZ COMPONENTS (scoped to .data-viz)
+   ============================================================ */
+.data-viz { background: var(--cream); color: var(--yale); }
+.data-viz .content-zone { row-gap: 18px; align-content: start; }
+.data-viz .verdict-bar { padding: 20px 28px; font-size: 18px; }
+
+/* Bullet */
+.bullet { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; font-size: var(--t4); color: var(--body-text); line-height: 1.5; }
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+
+/* Card */
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+.card-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.card-annotation { font-size: 13px; color: var(--text-dim); margin-bottom: 2px; }
+.card-stat { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.chart-header { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 8px; }
+
+/* Bar charts */
+.bar-group { display: flex; flex-direction: column; gap: 6px; }
+.bar-row { display: flex; align-items: center; gap: 12px; }
+.bar-label { width: 120px; text-align: right; flex-shrink: 0; font-size: 13px; color: var(--text-dim); line-height: 1.3; }
+.bar-track { flex: 1; height: 34px; background: var(--cream-warm); border-radius: 4px; position: relative; overflow: visible; cursor: pointer; }
+.bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding: 0 10px; transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 0; position: relative; }
+.bar-val { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; }
+.bar-val.outside { color: var(--yale); font-size: 14px; position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+
+/* Tooltips */
+.tip { position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: var(--yale); color: white; font-size: var(--t6); padding: 3px 8px; border-radius: 4px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 5; }
+.tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 3px solid transparent; border-top-color: var(--yale); }
+.bar-track:hover > .tip,
+.stat-card:hover > .tip,
+.gap-num:hover > .tip,
+.req-row:hover > .tip,
+.geo-row:hover > .tip,
+.grade-col:hover > .tip,
+.sc-track:hover > .tip,
+.rev-seg:hover > .tip { opacity: 1; }
+
+/* Stat hero cards (S8) */
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; position: relative; cursor: pointer; border-top: 3px solid; }
+.stat-num { font-size: 48px; font-weight: 800; line-height: 1; }
+.stat-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.3; }
+.stat-sub { font-size: 13px; color: var(--body-text); line-height: 1.35; margin-top: 2px; }
+
+/* Geo rows (S8/S9) */
+.geo-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--border); position: relative; cursor: pointer; }
+.geo-row:last-child { border-bottom: none; }
+.geo-flag { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: white; }
+.geo-name { font-size: 15px; color: var(--body-text); flex: 1; line-height: 1.3; }
+.geo-stat { font-size: 13px; color: var(--text-dim); font-weight: 600; }
+
+/* Requirement rows (S9) */
+.req-list { display: flex; flex-direction: column; gap: 8px; }
+.req-row { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--body-text); line-height: 1.4; padding: 6px 0; position: relative; cursor: pointer; }
+.req-icon { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: white; }
+
+/* Case highlight (S8) */
+.case-highlight { background: linear-gradient(135deg, var(--red-bg) 0%, var(--cream) 100%); border-left: 3px solid var(--red); border-radius: var(--radius); padding: 16px 24px; display: flex; align-items: center; gap: 18px; }
+.case-icon { font-size: 32px; flex-shrink: 0; color: var(--red); font-weight: 800; line-height: 1; }
+.case-text { font-size: 15px; color: var(--body-text); line-height: 1.5; flex: 1; }
+.case-text strong { color: var(--red); }
+
+/* Country pills (S9) */
+.country-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.country-pill { background: var(--gold-bg); color: var(--gold); border: 1px solid var(--gold); border-radius: 999px; padding: 2px 10px; font-size: var(--t5); font-weight: 600; }
+.country-pill.teal { background: var(--teal-bg); color: var(--teal); border-color: var(--teal); }
+
+/* Donut (S10) */
+.donut-wrap { display: flex; align-items: center; gap: 14px; }
+.donut-svg { width: 90px; height: 90px; flex-shrink: 0; }
+.donut-svg circle { fill: none; stroke-width: 8; transform: rotate(-90deg); transform-origin: 50% 50%; stroke-dasharray: 0 157; transition: stroke-dasharray 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.donut-legend { font-size: 12px; color: var(--body-text); line-height: 1.6; }
+.donut-legend strong { color: var(--yale); }
+
+/* Grade bars (S10) */
+.grade-bars { display: flex; align-items: flex-end; gap: 12px; height: 97px; }
+.grade-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; justify-content: flex-end; position: relative; cursor: pointer; }
+.grade-inner { width: 100%; border-radius: 3px 3px 0 0; transition: height 1s cubic-bezier(0.25, 0.46, 0.45, 0.94); height: 0; min-width: 24px; }
+.grade-mult { font-size: 15px; font-weight: 700; }
+.grade-name { font-size: var(--t6); color: var(--text-dim); }
+
+/* Scenario bars (S11) */
+.scenario-chart { grid-column: 1/13; display: flex; flex-direction: column; gap: 5px; }
+.scenario-header { font-size: var(--t3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+.sc-row { display: flex; align-items: center; gap: 12px; }
+.sc-label { width: 60px; text-align: right; font-size: 12px; font-weight: 700; color: var(--text-dim); flex-shrink: 0; }
+.sc-track { flex: 1; height: 30px; background: var(--cream-warm); border-radius: 4px; position: relative; overflow: visible; cursor: pointer; }
+.sc-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; justify-content: flex-end; transition: width 1s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 0; position: relative; }
+.sc-val { font-size: 17px; font-weight: 700; color: #fff; white-space: nowrap; }
+.sc-val.outside { color: var(--yale); position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); text-shadow: 0 0 3px var(--cream), 0 0 6px var(--cream); }
+.sc-math { font-size: var(--t5); color: var(--text-dim); padding-left: 72px; }
+
+/* Revenue stack bar (S12) */
+.rev-stack-bar { grid-column: 1/7; display: flex; flex-direction: column; gap: 9px; }
+.rev-stack-title { font-size: var(--t3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+.rev-bar-wrap { display: flex; height: 59px; border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.rev-seg { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px 12px; color: white; transition: flex-basis 1s cubic-bezier(0.25,0.46,0.45,0.94); cursor: pointer; position: relative; }
+.rev-seg .seg-val { font-size: 18px; font-weight: 700; white-space: nowrap; }
+.rev-seg .seg-label { font-size: var(--t6); opacity: 0.85; white-space: nowrap; }
+.rev-legend { display: flex; gap: 18px; flex-wrap: wrap; }
+.rev-legend-item { display: flex; align-items: center; gap: 5px; font-size: var(--t5); color: var(--body-text); }
+.rev-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.rev-total-row { display: flex; align-items: baseline; gap: 12px; padding-top: 5px; border-top: 2px solid var(--yale); }
+.rev-total-label { font-size: var(--t4); color: var(--yale); font-weight: 600; }
+.rev-total-val { font-size: 34px; font-weight: 800; color: var(--teal); }
+
+/* Waterfall (S12) */
+.waterfall { display: flex; align-items: flex-end; gap: 14px; height: 119px; position: relative; padding-bottom: 1px; }
+.waterfall::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: var(--border); }
+.wf-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.wf-bar { width: 100%; border-radius: 4px 4px 0 0; display: flex; align-items: center; justify-content: center; transition: height 1s cubic-bezier(0.25, 0.46, 0.45, 0.94); height: 0; min-width: 30px; }
+.wf-val { font-size: 13px; font-weight: 700; color: white; white-space: nowrap; }
+.wf-name { font-size: var(--t6); color: var(--text-dim); text-align: center; line-height: 1.2; margin-top: 3px; }
+
+/* Cannibalization (S12) */
+.cannibal-grid { display: flex; gap: 16px; }
+.cannibal-item { flex: 1; text-align: center; }
+.cannibal-item .old { font-size: var(--t5); color: var(--red); font-weight: 600; }
+.cannibal-item .arrow { font-size: 13px; color: var(--text-dim); }
+.cannibal-item .new { font-size: var(--t5); color: var(--teal); font-weight: 700; }
+.cannibal-item .mult { font-size: 24px; font-weight: 800; color: var(--yale); line-height: 1.2; }
+.cannibal-item .who { font-size: var(--t6); color: var(--text-dim); }
+.net-hero { font-size: 38px; font-weight: 800; color: var(--teal); line-height: 1.1; margin: 2px 0; }
+
+/* ============================================================
+   LAYER 6 — FRESH SLIDE COMPONENTS (S3, S5, S6, S7, S13)
+   ============================================================ */
+.slide-narrative { background: var(--cream); color: var(--yale); }
+.slide-narrative .slide-title { color: var(--yale); }
+
+/* Override LAYER 3 center-float: distribute rows top-to-bottom */
+.slide-narrative .content-zone {
+  align-content: start;
+  align-items: stretch;
+}
+
+/* --- Stat hero cards (S3, S5, S6, S13) --- */
+.stat-hero {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 3px;
+  min-height: 119px;
+}
+.stat-hero .hero-num {
+  font-family: var(--serif); font-size: 48px;
+  font-weight: 800; line-height: 1.1;
+}
+.stat-hero .hero-title {
+  font-family: var(--sans); font-size: 13px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.stat-hero .hero-label {
+  font-family: var(--body); font-size: 14px;
+  color: var(--text-dim); line-height: 1.4;
+}
+
+/* Inverted variant: colored bg, white text (S6) */
+.stat-hero.inverted {
+  background: var(--red); border-color: var(--red); color: #fff;
+  min-height: 140px;
+}
+.stat-hero.inverted .hero-num { color: #fff; }
+.stat-hero.inverted .hero-title { color: rgba(255,255,255,0.7); }
+.stat-hero.inverted .hero-label { color: rgba(255,255,255,0.85); }
+.stat-hero.inverted .hero-detail {
+  font-family: var(--body); font-size: 13px;
+  color: rgba(255,255,255,0.75); line-height: 1.45; text-align: left;
+  margin-top: 5px;
+}
+
+/* --- Hero numbers row (S5) --- */
+.hero-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 24px;
+  padding: 11px 0;
+}
+.hero-row .hero-item { text-align: center; }
+.hero-row .hero-item .hero-num {
+  font-family: var(--serif); font-size: 56px;
+  font-weight: 800; line-height: 1.1;
+}
+.hero-row .hero-item .hero-label {
+  font-family: var(--sans); font-size: 13px;
+  color: var(--text-dim); margin-top: 2px;
+}
+.hero-row .hero-arrow {
+  font-family: var(--sans); font-size: 36px;
+  color: var(--text-dim); font-weight: 300;
+}
+
+/* --- Full-width bars --- */
+.proof-strip {
+  grid-column: 1/13;
+  background: var(--yale); border-radius: var(--radius); color: #fff;
+  padding: 14px 24px;
+  font-family: var(--body); font-size: 15px;
+  line-height: 1.55;
+}
+.proof-strip strong { color: var(--teal-light); }
+
+.evidence-bar {
+  grid-column: 1/13;
+  background: var(--teal); border-radius: var(--radius); color: #fff;
+  padding: 14px 24px;
+  font-family: var(--body); font-size: 15px;
+  line-height: 1.55;
+}
+.evidence-bar strong { color: #fff; font-weight: 700; }
+
+.total-bar {
+  grid-column: 1/13;
+  background: var(--yale); border-radius: var(--radius); color: #fff;
+  padding: 16px 24px;
+  font-family: var(--body); font-size: 18px;
+  line-height: 1.5; text-align: center; font-weight: 600;
+}
+.total-bar strong {
+  font-family: var(--serif); font-weight: 800;
+  font-size: 24px;
+}
+
+/* --- Pull quote (S6) --- */
+.pull-quote-narrative {
+  grid-column: 1/13;
+  border-left: 4px solid var(--teal); border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--teal-bg);
+  padding: 14px 24px;
+  font-family: var(--serif); font-size: 18px;
+  font-style: italic; color: var(--yale); line-height: 1.55;
+}
+
+/* --- Transition bridge (S7) --- */
+.transition-bridge {
+  grid-column: 1/13;
+  background: var(--teal); border-radius: var(--radius); color: #fff;
+  padding: 16px 24px;
+  font-family: var(--body); font-size: 18px;
+  line-height: 1.5; text-align: center; font-weight: 600;
+}
+.transition-bridge .bridge-arrow {
+  font-size: 1.3em; margin-left: 8px; opacity: 0.7;
+}
+
+/* --- Stakeholder strip (S13) --- */
+.stakeholder-strip {
+  grid-column: 1/13;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.stake-card {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; display: flex; flex-direction: column;
+  gap: 3px;
+}
+.stake-card .stake-who {
+  font-family: var(--sans); font-size: 12px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--teal);
+}
+.stake-card .stake-change {
+  font-family: var(--serif); font-size: 16px;
+  font-weight: 700; color: var(--yale);
+}
+.stake-card .stake-how {
+  font-family: var(--body); font-size: 13px;
+  color: #444; line-height: 1.45;
+}
+.stake-card .stake-risk {
+  font-family: var(--sans); font-size: 11px;
+  color: var(--red); font-weight: 600; margin-top: auto;
+  padding-top: 4px; border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== S1: COVER ==================== -->
+<div class="slide s1 active">
+  <div class="hero-title">Smart Tickets</div>
+  <div class="hero-sub">From Toll Booth to Platform</div>
+  <div class="hero-bar"></div>
+  <div class="hero-meta">MGT 866 &middot; Build a Metaverse Strategy &middot; May 2026</div>
+</div>
+
+<!-- ==================== S2: THREE CRISES ==================== -->
+<div class="slide s2">
+  <style>
+    .s2 .newspaper { gap: 14px; }
+    .s2 .masthead { margin-bottom: 0; }
+    .s2 .headline { margin-bottom: 0; }
+    .s2 .subhead { margin-bottom: 0; }
+    .s2 .timeline-bar { margin: 0; }
+    .s2 .news-cols { font-size: 20px; line-height: 1.65; }
+    .s2 .news-col-head { font-size: 24px; }
+    .s2 .pull-quote { margin: 0 10%; font-size: 34px; }
+    .s2 .crisis-stats { margin-top: 0; padding-top: 16px; }
+    .s2 .crisis-num { font-size: 64px; }
+    .s2 .crisis-label { font-size: 16px; }
+    .s2 .news-highlight { font-size: 16px; }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:13.3%; background:var(--red);"></div></div>
+  <div class="section-label" style="color:var(--red);">Problem</div>
+  <div class="slide-body fill">
+    <div class="content-zone" style="flex:1;">
+    <div class="newspaper">
+      <div class="masthead">The Live Entertainment Record &middot; April 2026</div>
+      <div class="headline">Three Crises. One Broken Model.</div>
+      <div class="subhead">Convicted of monopoly, sued for enabling scalpers, banned from resale across Europe &mdash; all in the same business cycle</div>
+      <div class="timeline-bar">
+        <span class="tl-event"><strong>2023&ndash;25</strong> EU bans spread</span>
+        <span class="tl-divider">&rarr;</span>
+        <span class="tl-event"><strong>Sept 2025</strong> FTC BOTS Act suit</span>
+        <span class="tl-divider">&rarr;</span>
+        <span class="tl-event"><strong>Apr 2026</strong> DOJ guilty verdict</span>
+      </div>
+      <div class="news-cols">
+        <div>
+          <div class="news-col-head">1. Monopoly Convicted (DOJ)</div>
+          <div class="news-col-body">Federal jury found Live Nation guilty, April 15 2026. Settlement: $280M consumer fund, 15% fee cap at LN venues, 8-year consent decree. 40 state AGs continue pursuing structural breakup.</div>
+          <div class="news-highlight">At stake: <strong>$740M/year</strong> in US resale fees. The fee-extraction model is dying under court order.</div>
+        </div>
+        <div class="news-divider"></div>
+        <div>
+          <div class="news-col-head">2. Scalping Enabled (FTC)</div>
+          <div class="news-col-body">Separate BOTS Act lawsuit, Sept 2025. FTC alleges TM earned <strong>$3.7B</strong> in resale fees by enabling scalpers via TradeDesk. CEO Rapino email: <em>&ldquo;Is Verified Fan a pretend product?&rdquo;</em> TradeDesk shut down Oct 2025 &mdash; after the lawsuit forced their hand.</div>
+          <div class="news-highlight">FTC alleges TM <strong>&ldquo;declined to deploy technology&rdquo;</strong> that would stop bots &mdash; because it would reduce revenue.</div>
+        </div>
+        <div class="news-divider"></div>
+        <div>
+          <div class="news-col-head">3. Resale Banned (EU)</div>
+          <div class="news-col-body">France (&euro;15K fine per violation), Belgium (&euro;60K per offense), Italy (Viagogo fined &euro;23.5M, 2019). Netherlands: face-value-only resale pilot since 2022. Above-face-value resale is criminal across continental Europe. TM earns <strong>$0</strong> secondary revenue in these markets &mdash; its fastest-growing region with weakest monetization.</div>
+          <div class="news-highlight">EU MiCA <strong>likely exempts face-value digital tokens</strong> (pending ESMA guidance) &mdash; a regulatory tailwind.</div>
+        </div>
+      </div>
+      <div class="pull-quote">
+        <span class="quote-mark">&ldquo;</span>Is Verified Fan a pretend product?<span class="quote-mark">&rdquo;</span>
+        <div class="quote-attr">&mdash; CEO Michael Rapino, internal email (Digital Music News, 2025)</div>
+      </div>
+      <div class="crisis-stats">
+        <div class="crisis-stat"><div class="crisis-num">$740M/yr</div><div class="crisis-label">US resale fees dying under court order</div></div>
+        <div class="crisis-stat"><div class="crisis-num">$3.7B</div><div class="crisis-label">FTC alleges TM earned enabling scalpers</div></div>
+        <div class="crisis-stat"><div class="crisis-num">$0</div><div class="crisis-label">TM secondary revenue in continental Europe</div></div>
+      </div>
+      <div class="verdict-bar" style="background:var(--teal-bg); border:1px solid var(--teal);">Three different legal fronts &mdash; but they all point to the same broken infrastructure. The DOJ will impose a remedy. It&rsquo;s cheaper to build one.</div>
+    </div>
+    </div>
+    <div class="slide-footer">Sources: CNN/NPR (verdict Apr 2026) [2][3], FTC v. Live Nation complaint Sept 2025 [37], Digital Music News (Rapino email) [76], EU anti-scalping legislation (FR/BE/IT) [6][7][8], MiCA Regulation 2023/1114 [9]</div>
+  </div>
+</div>
+
+<!-- ==================== S3: WHAT IS A SMART TICKET? ==================== -->
+<div class="slide slide-narrative s3-rebuild">
+  <style>
+    .s3-rebuild .content-zone {
+      align-content: start;
+      row-gap: 30px;
+    }
+    .s3-rebuild .new-card {
+      padding: 40px 34px;
+    }
+    .s3-rebuild .new-card .card-body {
+      font-size: 26px;
+      line-height: 1.85;
+      gap: 20px;
+    }
+    .s3-rebuild .new-card .card-head {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+    .s3-rebuild .stat-hero {
+      min-height: 210px;
+      padding: 34px 32px;
+    }
+    .s3-rebuild .stat-hero .hero-num {
+      font-size: 64px;
+    }
+    .s3-rebuild .stat-hero .hero-label {
+      font-size: 19px;
+      line-height: 1.6;
+    }
+    .s3-rebuild .proof-strip {
+      padding: 30px 32px;
+      font-size: 19px;
+      line-height: 1.7;
+    }
+    .s3-rebuild .evidence-bar {
+      padding: 28px 32px;
+      font-size: 19px;
+      line-height: 1.65;
+    }
+    .s3-rebuild .verdict-bar {
+      padding: 28px 32px;
+      font-size: 21px;
+    }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:20%; background:var(--teal);"></div></div>
+  <div class="section-label" style="color:var(--teal);">The Product</div>
+  <div class="slide-body fill">
+    <div>
+      <div class="slide-title">What is a Smart Ticket?</div>
+      <div class="slide-subtitle">The fan experience stays identical. The infrastructure underneath changes everything.</div>
+    </div>
+    <div class="content-zone">
+      <!-- Left: What the fan sees -->
+      <div class="new-card" style="grid-column:1/7; border-top:3px solid var(--teal);">
+        <div class="card-head" style="color:var(--teal);">What the fan sees</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Nothing changes &mdash; same checkout on Ticketmaster.com, same QR code at the door</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>No crypto, no wallet setup, no new app</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>&ldquo;Buy a ticket&rdquo; stays identical</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>GET Protocol fans bought tickets normally &mdash; blockchain was invisible infrastructure</div>
+        </div>
+      </div>
+      <!-- Right: What changes underneath -->
+      <div class="new-card" style="grid-column:7/13; border-top:3px solid var(--yale);">
+        <div class="card-head" style="color:var(--yale);">What changes underneath</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--yale);"></span>Each ticket minted as EIP-5192 soulbound token &mdash; identity-bound, non-transferable pre-event</div>
+          <div class="bullet"><span class="dot" style="background:var(--yale);"></span>Resale price cap enforced by smart contract &mdash; not policy, not promises, not lawyers</div>
+          <div class="bullet"><span class="dot" style="background:var(--yale);"></span>Post-event: contract unlocks the token as a tradeable digital collectible on TM&rsquo;s marketplace</div>
+          <div class="bullet"><span class="dot" style="background:var(--yale);"></span>TM earns royalties on every secondary trade as sole authentic issuer</div>
+        </div>
+      </div>
+      <!-- Three capability stat heroes -->
+      <div class="stat-hero" style="grid-column:1/5; border-top:3px solid var(--teal);">
+        <div class="hero-title" style="color:var(--teal);">Kills Scalping</div>
+        <div class="hero-num" style="color:var(--teal);">60%</div>
+        <div class="hero-label">of high-demand purchases are automated bots &mdash; blocked at protocol level</div>
+      </div>
+      <div class="stat-hero" style="grid-column:5/9; border-top:3px solid var(--teal);">
+        <div class="hero-title" style="color:var(--teal);">Enables Fair Resale</div>
+        <div class="hero-num" style="color:var(--teal);">$497M/yr</div>
+        <div class="hero-label">fair resale revenue unlocked globally across 33 new countries</div>
+      </div>
+      <div class="stat-hero" style="grid-column:9/13; border-top:3px solid var(--gold);">
+        <div class="hero-title" style="color:var(--gold);">Creates Post-Event Value</div>
+        <div class="hero-num" style="color:var(--gold);">$319M/yr</div>
+        <div class="hero-label">digital memorabilia revenue at 5% conversion (base case)</div>
+      </div>
+      <!-- Adoption proof strip -->
+      <div class="proof-strip">
+        <strong>How it works:</strong> Pre-event, tickets live in TM&rsquo;s app &mdash; identity-bound, price-capped resale on TM&rsquo;s platform only. Blockchain invisible to fans: no wallet, no crypto. Post-event, the ticket unlocks as a persistent digital collectible. Never say &ldquo;blockchain,&rdquo; &ldquo;NFT,&rdquo; or &ldquo;crypto&rdquo; &mdash; frame as &ldquo;collectible ticket&rdquo; or &ldquo;digital keepsake.&rdquo; Mirror Reddit&rsquo;s naming strategy exactly.
+      </div>
+      <!-- Evidence bar -->
+      <div class="evidence-bar">
+        <strong>Reddit Avatars:</strong> 20M wallets created, credit-card only, users never said &ldquo;NFT&rdquo; [52]. <strong>GET Protocol:</strong> 8.5M+ tickets issued, fans bought normally, zero scalping incidents [21].
+      </div>
+      <div class="verdict-bar" style="background:var(--teal-bg); border:1px solid var(--teal);">
+        Blockchain is backend infrastructure &mdash; the fan never sees it. Adoption is captive, not discretionary.
+      </div>
+    </div>
+    <div class="slide-footer">Sources: EIP-5192 Soulbound Token Standard [20], Reddit Collectible Avatars [52], GET Protocol [21]</div>
+  </div>
+</div>
+
+<!-- ==================== S4: COMPARISON TABLE ==================== -->
+<div class="slide s4">
+  <style>
+    .s4 .content-zone { align-content: start; row-gap: 14px; }
+    .s4 .gap-stat { padding: 24px; min-height: 110px; }
+    .s4 .gap-val { font-size: 44px; }
+    .s4 .gap-label { font-size: 17px; line-height: 1.35; }
+    .s4 .compare-table-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+    .s4 .compare-table { font-size: 17px; }
+    .s4 .compare-table td { padding: 14px 12px; }
+    .s4 .compare-table th { padding: 14px 12px; }
+    .s4 .footnotes { padding: 12px 20px; background: var(--yale-light); border-radius: var(--radius); font-size: 13px; line-height: 1.45; }
+    .s4 .takeaway { padding: 14px 24px; background: var(--teal-bg); border-radius: var(--radius); font-size: 20px; line-height: 1.45; }
+    .s4 .missing-row { padding: 10px 0; }
+    .s4 .missing-stat { padding: 14px 14px; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); }
+    .s4 .missing-val { font-size: 38px; }
+    .s4 .missing-label { font-size: 14px; line-height: 1.35; }
+    .s4 .verdict-bar { padding: 14px 24px; font-size: 16px; }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:26.7%; background:var(--teal);"></div></div>
+  <div class="section-label" style="color:var(--teal);">The Product</div>
+  <div class="slide-body fill">
+    <div class="title-zone">
+      <div class="slide-title" style="color:var(--yale);">Four Approaches Exist. Only One Creates Value.</div>
+      <div class="slide-subtitle" style="color:var(--text-dim);">Every alternative solves identity &mdash; none creates a post-event revenue stream.</div>
+    </div>
+    <div class="content-zone">
+    <div class="gap-stats">
+      <div class="gap-stat bad">
+        <div class="gap-val">2 of 35</div>
+        <div class="gap-label">Countries with SafeTix<br>Already reverse-engineered</div>
+      </div>
+      <div class="gap-stat bad">
+        <div class="gap-val">~$0</div>
+        <div class="gap-label">TM resale revenue<br>in continental Europe</div>
+      </div>
+      <div class="gap-stat">
+        <div class="gap-val" style="color:var(--teal);">30</div>
+        <div class="gap-label">NFL stadiums with Wicket<br>facial biometrics (strong, but...)</div>
+      </div>
+    </div>
+    <div class="compare-table-wrap">
+      <table class="compare-table">
+        <thead><tr>
+          <th style="text-align:left;">Dimension</th>
+          <th>Facial Biometrics</th>
+          <th>Credit-Card Match</th>
+          <th>SafeTix / Rotating Barcodes</th>
+          <th class="winner">Smart Tickets</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Anti-Scalping</strong><br><em class="dim-why">Identity verification at gate</em></td>
+            <td><span class="check">&check;</span></td>
+            <td><span class="partial">~</span></td>
+            <td><span class="partial">~</span></td>
+            <td class="winner-col"><span class="check">&check;</span></td>
+          </tr>
+          <tr>
+            <td><strong>Fair Resale Revenue</strong><br><em class="dim-why">New global revenue stream</em></td>
+            <td><span class="cross">&cross;</span></td>
+            <td><span class="cross">&cross;</span></td>
+            <td><span class="cross">&cross;</span></td>
+            <td class="winner-col"><span class="check">&check;</span></td>
+          </tr>
+          <tr>
+            <td><strong>Post-Event Value</strong><br><em class="dim-why">Ticket becomes collectible</em></td>
+            <td><span class="cross">&cross;</span></td>
+            <td><span class="cross">&cross;</span></td>
+            <td><span class="cross">&cross;</span></td>
+            <td class="winner-col"><span class="check">&check;</span></td>
+          </tr>
+          <tr>
+            <td><strong>Global Compliance</strong><br><em class="dim-why">Works in EU ban countries</em></td>
+            <td><span class="cross">&cross;</span></td>
+            <td><span class="check">&check;</span></td>
+            <td><span class="partial">~</span></td>
+            <td class="winner-col"><span class="check">&check;</span></td>
+          </tr>
+          <tr>
+            <td><strong>Enterprise Maturity</strong><br><em class="dim-why">Proven at TM&rsquo;s 637M+ scale</em></td>
+            <td><span class="check">&check;</span></td>
+            <td><span class="check">&check;</span></td>
+            <td><span class="check">&check;</span></td>
+            <td class="winner-col"><span class="partial">~</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="footnotes">
+      <span>LaLiga fined &euro;1M by AEPD for biometric stadium access &mdash; GDPR blocks EU expansion [19]</span>
+      <span>SafeTix reverse-engineered via Chrome DevTools &mdash; &ldquo;not terribly sophisticated&rdquo; (Conduition / 404 Media, 2024) [18]</span>
+    </div>
+    <div class="takeaway">GET Protocol&rsquo;s 8.5M-ticket foundation + TM&rsquo;s 637M/yr distribution = the only path that replaces dying fees with new revenue.</div>
+    <div class="missing-row">
+      <div class="missing-stat"><div class="missing-val">$0</div><div class="missing-label">post-event revenue from any competitor</div></div>
+      <div class="missing-stat"><div class="missing-val">0</div><div class="missing-label">resale revenue solutions for EU ban countries</div></div>
+      <div class="missing-stat"><div class="missing-val" style="color:var(--teal);">Only 1</div><div class="missing-label">solution creates collectible value + fair resale + compliance</div></div>
+    </div>
+    <div class="verdict-bar" style="background:var(--teal-bg); border:1px solid var(--teal);">The maturity gap is closeable. GET Protocol&rsquo;s 8.5M-ticket foundation + TM&rsquo;s 637M/year distribution = the only path that replaces dying fees with new revenue.</div>
+    </div>
+    <div class="slide-footer">Sources: LaLiga/AEPD [19], 404 Media / Conduition [18], GET Protocol [21], MBW [36]</div>
+  </div>
+</div>
+
+<!-- ==================== S5: THREE REVENUE PILLARS ==================== -->
+<div class="slide slide-narrative s5-rebuild">
+  <style>
+    .s5-rebuild .hero-row {
+      padding: 20px 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 6px;
+    }
+    .s5-rebuild .hero-row .hero-num {
+      font-size: 64px;
+    }
+    .s5-rebuild .content-zone {
+      grid-template-rows: 1fr auto;
+      row-gap: 18px;
+      align-content: stretch;
+    }
+    .s5-rebuild .new-card {
+      padding: 34px 30px;
+      display: flex;
+      flex-direction: column;
+    }
+    .s5-rebuild .new-card .card-body {
+      font-size: 26px;
+      line-height: 1.85;
+      gap: 22px;
+    }
+    .s5-rebuild .new-card .card-body strong {
+      display: inline-block;
+      min-width: 115px;
+    }
+    .s5-rebuild .new-card .card-head {
+      font-size: 22px;
+      margin-bottom: 14px;
+    }
+    .s5-rebuild .total-bar {
+      padding: 26px 34px;
+      font-size: 23px;
+    }
+    .s5-rebuild .total-bar strong {
+      font-size: 34px;
+    }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:33.3%; background:var(--teal);"></div></div>
+  <div class="section-label" style="color:var(--teal);">Value Propositions</div>
+  <div class="slide-body fill">
+    <div>
+      <div class="slide-title">Three Revenue Pillars from One Infrastructure Decision</div>
+      <div class="slide-subtitle">Smart tickets create value in three dimensions simultaneously &mdash; replacing $740M in at-risk fees with a $915M platform.</div>
+    </div>
+    <!-- Hero numbers row (above grid) -->
+    <div class="hero-row">
+      <div class="hero-item">
+        <div class="hero-num" style="color:var(--red);">$740M</div>
+        <div class="hero-label">dying under DOJ</div>
+      </div>
+      <div class="hero-arrow">&rarr;</div>
+      <div class="hero-item">
+        <div class="hero-num" style="color:var(--teal);">$915M</div>
+        <div class="hero-label">new platform revenue</div>
+      </div>
+      <div class="hero-arrow">&rarr;</div>
+      <div class="hero-item">
+        <div class="hero-num" style="color:var(--yale);">35</div>
+        <div class="hero-label">countries (from 2)</div>
+      </div>
+    </div>
+    <div class="content-zone">
+      <!-- VP1 -->
+      <div class="new-card" style="grid-column:1/5; border-top:3px solid var(--teal);">
+        <div class="card-head" style="color:var(--teal);">VP 1 &middot; Legal Defense</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>Problem:</strong> SafeTix is DOJ exhibit A; FTC alleges TM &ldquo;declined to deploy&rdquo; anti-scalping tech</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Unlock:</strong> Smart contracts can&rsquo;t be &ldquo;declined to deploy&rdquo; &mdash; restructures legal exposure at root</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Evidence:</strong> GET Protocol: zero scalping in 4 countries; 8.5M tickets issued [21]</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>Risk:</strong> $280M consumer fund + 8-year consent decree + 40 state AGs</div>
+        </div>
+        <div style="font-size:22px; color:var(--teal); font-weight:700; margin-top:16px; padding-top:14px; border-top:2px solid var(--teal);">&rarr; $740M in fee risk replaced by defensible architecture</div>
+        <div style="font-size:13px; color:var(--text-dim); font-style:italic; margin-top:4px;">FTC complaint para. 89 [37]</div>
+      </div>
+      <!-- VP2 -->
+      <div class="new-card" style="grid-column:5/9; border-top:3px solid var(--teal);">
+        <div class="card-head" style="color:var(--teal);">VP 2 &middot; International Revenue</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>Problem:</strong> SafeTix works in 2 of 35 countries; $0 EU secondary revenue today</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Unlock:</strong> Software-only rollout, proven via GET Protocol &mdash; no scanners, no hardware</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Evidence:</strong> 8.5M tickets in EU + LATAM + Asia; fans bought normally [21]</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Scale:</strong> 33 countries &times; secondary market fees = largest untapped TM revenue pool</div>
+        </div>
+        <div style="font-size:22px; color:var(--teal); font-weight:700; margin-top:16px; padding-top:14px; border-top:2px solid var(--teal);">&rarr; $497M/yr fair resale revenue across 33 new countries</div>
+        <div style="font-size:13px; color:var(--text-dim); font-style:italic; margin-top:4px;">GET Protocol [21], LN FY2025 [32]</div>
+      </div>
+      <!-- VP3 -->
+      <div class="new-card" style="grid-column:9/13; border-top:3px solid var(--gold);">
+        <div class="card-head" style="color:var(--gold);">VP 3 &middot; Post-Event Platform</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>Problem:</strong> $33B&rarr;$271B memorabilia market; 637M tickets/yr &mdash; TM earns $0</div>
+          <div class="bullet"><span class="dot" style="background:var(--gold);"></span><strong>Unlock:</strong> Ticket unlocks as collectible post-event; TM earns marketplace fees forever</div>
+          <div class="bullet"><span class="dot" style="background:var(--gold);"></span><strong>Evidence:</strong> Reddit: 20M wallets, invisible blockchain, credit-card only [52]</div>
+          <div class="bullet"><span class="dot" style="background:var(--gold);"></span><strong>Model:</strong> 637M &times; 5% conversion &times; $10 avg = $319M/yr base case</div>
+        </div>
+        <div style="font-size:22px; color:var(--gold); font-weight:700; margin-top:16px; padding-top:14px; border-top:2px solid var(--gold);">&rarr; $319M/yr digital memorabilia at 5% conversion</div>
+        <div style="font-size:13px; color:var(--text-dim); font-style:italic; margin-top:4px;">Market Decipher [31], Heritage Auctions [74]</div>
+      </div>
+      <!-- Total bar (replaces verdict) -->
+      <div class="total-bar">
+        One infrastructure decision activates all three pillars simultaneously. Legal defense alone justifies the investment &mdash; international revenue and digital memorabilia are pure upside on the same platform.
+      </div>
+    </div>
+    <div class="slide-footer">Sources: FTC complaint [37], DOJ verdict [5], GET Protocol [21], Market Decipher [31], LN FY2025 [32]</div>
+  </div>
+</div>
+
+<!-- ==================== S6: SAFETIX IS THE LIABILITY ==================== -->
+<div class="slide slide-narrative s6-rebuild">
+  <style>
+    .s6-rebuild .content-zone {
+      align-content: start;
+      row-gap: 20px;
+    }
+    .s6-rebuild .stat-hero.inverted {
+      min-height: 165px;
+      padding: 24px 30px;
+    }
+    .s6-rebuild .stat-hero.inverted .hero-num {
+      font-size: 64px;
+    }
+    .s6-rebuild .stat-hero.inverted .hero-detail {
+      font-size: 19px;
+      line-height: 1.6;
+    }
+    .s6-rebuild .new-card {
+      padding: 36px 32px;
+    }
+    .s6-rebuild .new-card .card-body {
+      font-size: 26px;
+      line-height: 1.85;
+      gap: 18px;
+    }
+    .s6-rebuild .new-card .card-head {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+    .s6-rebuild .pull-quote-narrative {
+      padding: 34px 40px;
+      font-size: 26px;
+      line-height: 1.7;
+    }
+    .s6-rebuild .verdict-bar {
+      padding: 24px 32px;
+      font-size: 22px;
+    }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:40%; background:var(--teal);"></div></div>
+  <div class="section-label" style="color:var(--teal);">Value Proposition 1 of 3 &middot; Legal Defense</div>
+  <div class="slide-body fill">
+    <div>
+      <div class="slide-title">SafeTix is the Liability, Not the Solution</div>
+      <div class="slide-subtitle">The technology built to protect TM&rsquo;s secondary market is now exhibit A in the DOJ&rsquo;s monopoly case.</div>
+    </div>
+    <div class="content-zone">
+      <!-- Stat hero row: inverted red cards -->
+      <div class="stat-hero inverted" style="grid-column:1/7;">
+        <div class="hero-num">$740M/yr</div>
+        <div class="hero-title">DOJ Exposure</div>
+        <div class="hero-detail">Federal jury guilty verdict April 2026. $280M consumer fund. 15% fee cap at LN venues. 8-year consent decree. 40 state AGs pursuing structural breakup.</div>
+      </div>
+      <div class="stat-hero inverted" style="grid-column:7/13;">
+        <div class="hero-num">$3.7B</div>
+        <div class="hero-title">FTC Exposure</div>
+        <div class="hero-detail">Separate BOTS Act lawsuit Sept 2025. TM earned $3.7B in resale fees by enabling scalpers via TradeDesk. CEO Rapino email: &ldquo;Is Verified Fan a pretend product?&rdquo;</div>
+      </div>
+      <!-- Evidence columns -->
+      <div class="new-card" style="grid-column:1/7; border-top:3px solid var(--red);">
+        <div class="card-head" style="color:var(--red);">The double exposure &mdash; DOJ + FTC</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>SafeTix ruled to protect TM&rsquo;s monopoly &mdash; not fans</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>FTC: TM chose not to deploy anti-scalping tech because it would reduce revenue</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>TradeDesk shut down Oct 2025 &mdash; only after FTC lawsuit forced their hand</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>TM bought Songkick&rsquo;s tech for $110M in 2018 and shelved it</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>CEO Rapino email: &ldquo;Is Verified Fan a pretend product?&rdquo;</div>
+        </div>
+      </div>
+      <div class="new-card" style="grid-column:7/13; border-top:3px solid var(--red);">
+        <div class="card-head" style="color:var(--red);">Already compromised</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>SafeTix reverse-engineered via Chrome DevTools &mdash; &ldquo;not terribly sophisticated&rdquo; (404 Media, 2024)</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>Active commercial exploit: brokers generate valid barcodes for resale at scale</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>~40K tokens leaked &mdash; shared secrets extractable via API</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>March 2026 upgrade (animated barcodes) remains confined to US + UK only</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span>The technical protection TM built its moat around is fundamentally broken</div>
+        </div>
+      </div>
+      <!-- Pull quote -->
+      <div class="pull-quote-narrative">
+        &ldquo;We&rsquo;ll try harder&rdquo; fails as a legal defense. &ldquo;We rebuilt the infrastructure so scalping <em>can&rsquo;t</em> happen&rdquo; is structurally different. Smart tickets make non-deployment structurally impossible &mdash; the FTC&rsquo;s core allegation becomes permanently moot.
+      </div>
+      <!-- Verdict -->
+      <div class="verdict-bar" style="background:var(--teal-bg); border:1px solid var(--teal);">
+        TM&rsquo;s current technology is simultaneously legally exposed (DOJ/FTC) and technically broken (reverse-engineered). The premise for continuing with SafeTix is gone.
+      </div>
+    </div>
+    <div class="slide-footer">Sources: CNN [2], NPR [3], DOJ [5], FTC complaint [37], 404 Media [18], Digital Music News [76]</div>
+  </div>
+</div>
+
+<!-- ==================== S7: DEFENSIBLE ARCHITECTURE ==================== -->
+<div class="slide slide-narrative s7-rebuild">
+  <style>
+    .s7-rebuild .content-zone {
+      grid-template-rows: auto auto auto;
+      row-gap: 22px;
+      align-content: start;
+    }
+    .s7-rebuild .new-card {
+      padding: 42px 36px;
+    }
+    .s7-rebuild .new-card .card-body {
+      font-size: 28px;
+      line-height: 1.75;
+      gap: 16px;
+    }
+    .s7-rebuild .new-card .card-head {
+      font-size: 21px;
+      margin-bottom: 10px;
+    }
+    .s7-rebuild .s7-table-wrap {
+      grid-column: 6/13;
+      background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+      border-top: 3px solid var(--teal); padding: 32px 28px;
+      overflow: hidden; display: flex; flex-direction: column; justify-content: center;
+    }
+    .s7-rebuild .compare-table {
+      width: 100%; border-collapse: collapse;
+      font-family: var(--sans); font-size: 18px;
+    }
+    .s7-rebuild .compare-table th {
+      padding: 18px 20px;
+      font-weight: 700; text-align: center; border-bottom: 2px solid var(--border);
+      font-size: 18px; vertical-align: bottom;
+    }
+    .s7-rebuild .compare-table th.winner {
+      background: var(--teal-bg); border: 2px solid var(--teal); color: var(--teal);
+    }
+    .s7-rebuild .compare-table td {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border); text-align: center; vertical-align: middle;
+      font-size: 18px;
+    }
+    .s7-rebuild .compare-table td:first-child {
+      text-align: left; font-weight: 600; color: var(--yale);
+    }
+    .s7-rebuild .compare-table td.winner-col {
+      background: rgba(0,168,150,0.04);
+    }
+    .s7-rebuild .reg-boxes {
+      grid-column: 1/13; display: flex; gap: var(--gutter);
+    }
+    .s7-rebuild .reg-box {
+      flex: 1; border-radius: var(--radius); padding: 30px 28px;
+      border-top: 3px solid; background: var(--white);
+    }
+    .s7-rebuild .reg-box .reg-title {
+      font-weight: 700; font-size: 16px;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+    }
+    .s7-rebuild .reg-box .reg-body {
+      font-size: 20px; color: var(--body-text); line-height: 1.55;
+    }
+    .s7-rebuild .transition-bridge {
+      padding: 22px 30px;
+      font-size: 20px;
+    }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:46.7%; background:var(--teal);"></div></div>
+  <div class="section-label" style="color:var(--teal);">Value Proposition 1 of 3 &middot; Legal Defense</div>
+  <div class="slide-body fill">
+    <div>
+      <div class="slide-title">Smart Tickets = Defensible Architecture</div>
+      <div class="slide-subtitle">Same business outcome as SafeTix. Structurally different legal posture.</div>
+    </div>
+    <div class="content-zone">
+      <!-- Left: evidence card -->
+      <div class="new-card" style="grid-column:1/6; border-top:3px solid var(--teal);">
+        <div class="card-head" style="color:var(--teal);">Code enforces what policy couldn&rsquo;t</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Smart contracts cap resale prices algorithmically &mdash; no lawyers, no loopholes</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Pre-event tickets tradeable only on TM&rsquo;s marketplace &mdash; off-platform purchases don&rsquo;t grant venue entry</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Bots (60% of high-demand purchases) blocked at protocol level</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Off-platform scalping impractical: only TM-validated transfers grant venue entry</div>
+        </div>
+        <div style="font-size:18px; color:var(--teal); font-weight:700; margin-top:24px; padding-top:14px; border-top:1px solid var(--border);">GET Protocol: 8.5M+ tickets &middot; zero scalping incidents</div>
+      </div>
+      <!-- Right: comparison table -->
+      <div class="s7-table-wrap">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;">Dimension</th>
+              <th>SafeTix</th>
+              <th class="winner">Smart Tickets</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Deployment</td><td>US + UK only (2)</td><td class="winner-col">Any country via software (35)</td></tr>
+            <tr><td>Hardware</td><td>Proprietary scanners</td><td class="winner-col">Any smartphone</td></tr>
+            <tr><td>Connectivity</td><td>Live internet at gate</td><td class="winner-col">Works offline</td></tr>
+            <tr><td>Security</td><td>Reverse-engineered</td><td class="winner-col">Cryptographic (EIP-5192)</td></tr>
+            <tr><td>DOJ optics</td><td>Locks in proprietary app</td><td class="winner-col">Fan owns token publicly</td></tr>
+            <tr><td>Revenue reach</td><td>$0 in 33 countries</td><td class="winner-col">$497M+ unlocked globally</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Regulatory tailwinds -->
+      <div class="reg-boxes">
+        <div class="reg-box" style="background:var(--yale-light); border-top-color:var(--yale);">
+          <div class="reg-title" style="color:var(--yale);">EU &middot; MiCA</div>
+          <div class="reg-body">Exempts face-value utility tokens from crypto regulation pre-event. Post-event collectible phase requires monitoring.</div>
+        </div>
+        <div class="reg-box" style="background:var(--yale-light); border-top-color:var(--yale);">
+          <div class="reg-title" style="color:var(--yale);">US &middot; CLARITY Act</div>
+          <div class="reg-body">Passed House 294&ndash;134 bipartisan July 2025. Utility token classification framework aligns with smart ticket design.</div>
+        </div>
+        <div class="reg-box" style="background:var(--red-bg); border-top-color:var(--red);">
+          <div class="reg-title" style="color:var(--red);">DOJ Consent Decree</div>
+          <div class="reg-body">8-year mandate creates restructuring window. $280M consumer fund + 15% fee cap = the fee model is dying. Compliance alone offers no growth path &mdash; smart tickets offer the path from fines to platform revenue.</div>
+        </div>
+      </div>
+      <!-- Transition bridge -->
+      <div class="transition-bridge">
+        The regulatory framework supports smart tickets. The architecture deploys globally. But where is the revenue gap? SafeTix works in 2 countries. TM operates in 35.<span class="bridge-arrow"> &rarr;</span>
+      </div>
+    </div>
+    <div class="slide-footer">Sources: Queue-it [11], Imperva [12], GET Protocol [21], MiCA [9], CLARITY Act [26][27], DOJ [5]</div>
+  </div>
+</div>
+
+<!-- ==================== S8: VP2 INTERNATIONAL (PORT) ==================== -->
+<div class="slide data-viz s8-enlarge">
+  <style>
+    .s8-enlarge .content-zone { row-gap: 22px; }
+    .s8-enlarge .stat-card { padding: 32px 26px; }
+    .s8-enlarge .stat-num { font-size: 60px; }
+    .s8-enlarge .bullet { font-size: 16px; }
+    .s8-enlarge .stat-sub { font-size: 15px; }
+    .s8-enlarge .card { padding: 36px; }
+    .s8-enlarge .card-annotation { font-size: 15px; }
+    .s8-enlarge .bar-track { height: 48px; }
+    .s8-enlarge .case-highlight { padding: 28px 32px; }
+    .s8-enlarge .geo-row { font-size: 16px; padding: 14px 0; }
+    .s8-enlarge .verdict-bar { padding: 32px 36px; }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:53.3%; background:var(--teal);"></div></div>
+  <div class="section-label" style="color:var(--teal);">Value Proposition 2 of 3 &middot; International Revenue</div>
+
+  <div class="slide-body">
+    <div>
+      <div class="slide-title">SafeTix Works in 2 Countries. TM Operates in 35.</div>
+      <div class="slide-subtitle">International fans exceeded domestic for the first time in 2025 &mdash; but SafeTix doesn&rsquo;t cross the Atlantic.</div>
+    </div>
+
+    <div class="content-zone">
+
+      <!-- Hero stats -->
+      <div class="stat-card" style="grid-column:1/4; border-top-color:var(--yale);">
+        <div class="stat-num" style="color:var(--yale);">35</div>
+        <div class="stat-label">Countries TM operates in</div>
+        <div class="stat-sub">North America &middot; Europe &middot; APAC &middot; LATAM</div>
+        <div class="tip">Live Nation 2025 annual report</div>
+      </div>
+      <div class="stat-card" style="grid-column:4/7; border-top-color:var(--red);">
+        <div class="stat-num" style="color:var(--red);">2</div>
+        <div class="stat-label">Countries with SafeTix</div>
+        <div class="stat-sub">US + UK only &mdash; ~89% volume but a fraction of footprint</div>
+        <div class="tip">SafeTix coverage: US + UK</div>
+      </div>
+      <div class="stat-card" style="grid-column:7/10; border-top-color:var(--red);">
+        <div class="stat-num" style="color:var(--red);">$0</div>
+        <div class="stat-label">EU secondary revenue</div>
+        <div class="stat-sub">TM issues PDFs across continental Europe &mdash; captures nothing on resale</div>
+        <div class="tip">Continental EU = $0 secondary fees</div>
+      </div>
+      <div class="stat-card" style="grid-column:10/13; border-top-color:var(--gold);">
+        <div class="stat-num" style="color:var(--gold);">$25.2B</div>
+        <div class="stat-label">LN FY2025 revenue</div>
+        <div class="stat-sub">International fans now a majority for the first time in TM history</div>
+        <div class="tip">LN FY2025 [32] &middot; Intl. fans &gt; domestic in 2025</div>
+      </div>
+
+      <!-- LEFT: Where SafeTix works -->
+      <div class="card" style="grid-column:1/7; border-top:3px solid var(--teal);">
+        <div class="card-title" style="color:var(--teal);">Where SafeTix works &mdash; and TM earns the fee</div>
+        <div class="card-annotation">~89% of TM ticket volume &middot; ~27% fee captured on every resale</div>
+
+        <div class="bar-group" data-animate="bars">
+          <div class="bar-row">
+            <div class="bar-label">US ticket volume</div>
+            <div class="bar-track">
+              <div class="tip">Major US stadiums &middot; NFL &middot; NBA &middot; MLB &middot; NHL</div>
+              <div class="bar-fill" data-width="78%" style="background:var(--teal);"><span class="bar-val">~78%</span></div>
+            </div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">UK ticket volume</div>
+            <div class="bar-track">
+              <div class="tip">UK arenas + Premier League venues</div>
+              <div class="bar-fill" data-width="11%" style="background:var(--teal); opacity:0.75;"><span class="bar-val">~11%</span></div>
+            </div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Other 33 countries</div>
+            <div class="bar-track">
+              <div class="tip">No SafeTix coverage &middot; zero secondary fee capture</div>
+              <div class="bar-fill" data-width="0%" style="background:var(--cream-warm); border:1px solid var(--border);"><span class="bar-val outside">0%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>NFL &middot; NBA &middot; MLB &middot; NHL venues &mdash; proprietary scanning hardware deployed</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Secondary market: TM captures ~27% fee on every resale</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>The model that built TM&rsquo;s $740M/yr resale business</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Where TM earns nothing -->
+      <div class="card" style="grid-column:7/13; border-top:3px solid var(--red);">
+        <div class="card-title" style="color:var(--red);">Where TM issues PDFs &mdash; and earns $0 on secondary</div>
+        <div class="card-annotation">33 of 35 countries &middot; TM&rsquo;s fastest-growing markets</div>
+
+        <div>
+          <div class="geo-row">
+            <div class="geo-flag" style="background:var(--red);">EU</div>
+            <div class="geo-name"><strong>Continental Europe</strong> &mdash; France, Germany, Italy, Spain, Netherlands, Belgium&hellip;</div>
+            <div class="geo-stat" style="color:var(--red);">$0</div>
+            <div class="tip">EU resale bans + no SafeTix = zero capture</div>
+          </div>
+          <div class="geo-row">
+            <div class="geo-flag" style="background:var(--red);">AP</div>
+            <div class="geo-name"><strong>Asia-Pacific</strong> &mdash; Japan, Australia, South Korea, Singapore</div>
+            <div class="geo-stat" style="color:var(--red);">$0</div>
+            <div class="tip">PDF tickets &middot; resale flows to local marketplaces</div>
+          </div>
+          <div class="geo-row">
+            <div class="geo-flag" style="background:var(--red);">LA</div>
+            <div class="geo-name"><strong>Latin America</strong> &mdash; Mexico, Brazil, Argentina, Colombia, Chile</div>
+            <div class="geo-stat" style="color:var(--red);">$0</div>
+            <div class="tip">Stadium tours sell out &middot; TM captures primary only</div>
+          </div>
+        </div>
+
+        <div class="case-highlight">
+          <div class="case-icon">!</div>
+          <div class="case-text">
+            <strong>Taylor Swift &middot; Paris 2024:</strong> sold through TM France, resold freely on Viagogo &mdash; TM earned <strong>$0</strong> in secondary fees on the biggest tour in history.
+          </div>
+        </div>
+      </div>
+
+      <!-- Verdict -->
+      <div class="verdict-bar" style="background:var(--teal-bg); border:1px solid var(--teal);">
+        TM&rsquo;s fastest-growing markets are exactly where its secondary technology doesn&rsquo;t work &mdash; a structural revenue gap, not a regulatory one.
+      </div>
+    </div>
+
+    <div class="slide-footer">Sources: LN FY2025 Annual Report [32], Ticketmaster country footprint, Viagogo (2024), TM resale fee disclosure (~27%), DOJ filings</div>
+  </div>
+</div>
+
+<!-- ==================== S9: SOFTWARE-ONLY (PORT) ==================== -->
+<div class="slide data-viz s9-enlarge">
+  <style>
+    .s9-enlarge .verdict-bar { padding: 22px 30px; }
+    .s9-enlarge .info-bar { padding: 20px 28px; }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:60%; background:var(--teal);"></div></div>
+  <div class="section-label" style="color:var(--teal);">Value Proposition 2 of 3 &middot; International Revenue</div>
+
+  <div class="slide-body">
+    <div>
+      <div class="slide-title">Software-Only. Any Venue. Any Country.</div>
+      <div class="slide-subtitle">Smart tickets require less infrastructure than SafeTix &mdash; and are already deployed in the exact markets TM doesn&rsquo;t reach.</div>
+    </div>
+
+    <div class="content-zone">
+
+      <!-- SafeTix vs Smart Tickets -->
+      <div class="card" style="grid-column:1/7; border-top:3px solid var(--red);">
+        <div class="card-title" style="color:var(--red);">SafeTix &mdash; what every venue needs</div>
+        <div class="card-annotation">Hardware-dependent &middot; proprietary stack &middot; live connectivity</div>
+        <div class="req-list">
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--red);">&times;</div>
+            <div><strong>Proprietary scanning hardware</strong> at every gate &mdash; capex per venue</div>
+            <div class="tip">Custom NFC scanners required at each entry point</div>
+          </div>
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--red);">&times;</div>
+            <div><strong>Mandatory TM mobile app</strong> install for the fan &mdash; friction at door</div>
+            <div class="tip">App-only delivery &middot; no PDF or print fallback</div>
+          </div>
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--red);">&times;</div>
+            <div><strong>Live internet connection</strong> at the gate &mdash; fails in arenas with poor signal</div>
+            <div class="tip">Token rotation requires online auth at scan</div>
+          </div>
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--red);">&times;</div>
+            <div><strong>Already reverse-engineered</strong> via Chrome DevTools &mdash; &ldquo;not terribly sophisticated&rdquo;</div>
+            <div class="tip">Conduition / 404 Media (2024)</div>
+          </div>
+        </div>
+        <div class="card-stat" style="color:var(--red);">Result: limited to 2 of 35 countries &middot; stuck in US + UK</div>
+      </div>
+
+      <div class="card" style="grid-column:7/13; border-top:3px solid var(--teal);">
+        <div class="card-title" style="color:var(--teal);">Smart Tickets &mdash; what every venue needs</div>
+        <div class="card-annotation">Software-only &middot; runs on existing infrastructure &middot; works offline</div>
+        <div class="req-list">
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--teal);">&check;</div>
+            <div><strong>Any smartphone</strong> &mdash; same QR / wallet pass fans already use</div>
+            <div class="tip">Apple Wallet &middot; Google Wallet &middot; standard QR scanners</div>
+          </div>
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--teal);">&check;</div>
+            <div><strong>Pre-downloaded token list</strong> &mdash; venue syncs once before doors</div>
+            <div class="tip">Merkle proof verification &middot; no live blockchain query</div>
+          </div>
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--teal);">&check;</div>
+            <div><strong>Works offline at the gate</strong> &mdash; no live blockchain connection required</div>
+            <div class="tip">Validation runs locally on the scanner device</div>
+          </div>
+          <div class="req-row">
+            <div class="req-icon" style="background:var(--teal);">&check;</div>
+            <div><strong>Cryptographically tamper-proof</strong> &mdash; can&rsquo;t be reverse-engineered like SafeTix</div>
+            <div class="tip">Public-key signatures &middot; open verification standard</div>
+          </div>
+        </div>
+        <div class="card-stat" style="color:var(--teal);">Result: deployable in all 35 countries &middot; less infrastructure than SafeTix</div>
+      </div>
+
+      <!-- EU regulatory -->
+      <div class="card" style="grid-column:1/7; border-top:3px solid var(--gold);">
+        <div class="card-title" style="color:var(--gold);">EU regulatory alignment &mdash; the mandate is already there</div>
+        <div class="card-annotation">Face-value resale is law &mdash; smart tickets monetize the constraint</div>
+
+        <div class="country-pills">
+          <span class="country-pill">France &middot; &euro;15K/violation</span>
+          <span class="country-pill">Belgium &middot; &euro;60K fines</span>
+          <span class="country-pill">Italy &middot; Viagogo &euro;23.5M</span>
+          <span class="country-pill">Netherlands &middot; GUTS native</span>
+        </div>
+
+        <div>
+          <div class="bullet"><span class="dot" style="background:var(--gold);"></span>Each country mandates face-value resale by law &mdash; smart contracts comply <em>by design</em></div>
+          <div class="bullet"><span class="dot" style="background:var(--gold);"></span>TM earns a service fee on every transfer &mdash; legally permitted, code-enforced</div>
+          <div class="bullet"><span class="dot" style="background:var(--gold);"></span>MiCA likely exempts face-value digital tickets (pending ESMA guidance)</div>
+        </div>
+
+        <div class="note-box" style="background:var(--gold-bg); border-left-color:var(--gold); font-style:italic;">
+          &ldquo;This isn&rsquo;t a new constraint. It&rsquo;s <strong>monetizing a constraint that already exists</strong>.&rdquo;
+        </div>
+      </div>
+
+      <!-- GET Protocol -->
+      <div class="card" style="grid-column:7/13; border-top:3px solid var(--teal);">
+        <div class="card-title" style="color:var(--teal);">GET Protocol &mdash; already live in TM&rsquo;s $0 markets</div>
+        <div class="card-annotation">8.5M+ tickets &middot; 4 countries &middot; zero scalping &middot; zero proprietary hardware</div>
+
+        <div>
+          <div class="geo-row">
+            <div class="geo-flag" style="background:var(--teal);">NL</div>
+            <div class="geo-name"><strong>GUTS Tickets</strong> &mdash; Netherlands top-5 ticketer (~700K tickets/yr)</div>
+            <div class="geo-stat" style="color:var(--teal);">Live</div>
+            <div class="tip">Direct acquisition target &middot; ready user base</div>
+          </div>
+          <div class="geo-row">
+            <div class="geo-flag" style="background:var(--teal);">IT</div>
+            <div class="geo-name"><strong>WICKET</strong> &mdash; Italy, post-Viagogo regulatory environment</div>
+            <div class="geo-stat" style="color:var(--teal);">Live</div>
+            <div class="tip">Operating in a market where Viagogo was fined &euro;23.5M</div>
+          </div>
+          <div class="geo-row">
+            <div class="geo-flag" style="background:var(--teal);">CO</div>
+            <div class="geo-name"><strong>TuTicket</strong> &mdash; Colombia, Latin American beachhead</div>
+            <div class="geo-stat" style="color:var(--teal);">Live</div>
+            <div class="tip">Spanish-language market &middot; LATAM expansion proof</div>
+          </div>
+          <div class="geo-row">
+            <div class="geo-flag" style="background:var(--teal);">KR</div>
+            <div class="geo-name"><strong>getTicket</strong> &mdash; South Korea, K-pop touring market</div>
+            <div class="geo-stat" style="color:var(--teal);">Live</div>
+            <div class="tip">High-demand fanbase &middot; proven against bot attacks</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="info-bar" style="background:var(--teal-bg); border-color:var(--teal); color:var(--yale);">
+        <strong style="color:var(--teal);">35 countries reachable</strong> &middot; <strong style="color:var(--teal);">$497M+</strong> annual fair resale revenue unlocked &middot; <strong style="color:var(--teal);">$0</strong> new hardware investment
+      </div>
+
+      <div class="verdict-bar" style="background:var(--gold-bg); border:1px solid var(--gold);">
+        Smart tickets need less infrastructure than SafeTix &mdash; and are already field-proven in the exact markets where TM earns nothing today.
+      </div>
+    </div>
+
+    <div class="slide-footer">Sources: GET Protocol (GUTS, WICKET, TuTicket, getTicket) [21], EU resale legislation (FR, BE, IT, NL) [6][7][8], MiCA / ESMA guidance [9], Conduition / 404 Media [18], LN FY2025 [32]</div>
+  </div>
+</div>
+
+<!-- ==================== S10: PROVENANCE ASSET (PORT) ==================== -->
+<div class="slide data-viz s10-enlarge">
+  <style>
+    .s10-enlarge .donut-svg { width: 160px; height: 160px; }
+    .s10-enlarge .donut-legend { font-size: 17px; line-height: 1.5; }
+    .s10-enlarge .donut-wrap { gap: 22px; }
+    .s10-enlarge .grade-bars { height: 240px; gap: 16px; }
+    .s10-enlarge .grade-mult { font-size: 24px; }
+    .s10-enlarge .grade-name { font-size: 16px; }
+    .s10-enlarge .grade-inner { min-width: 36px; }
+    .s10-enlarge .bar-track { height: 52px; }
+    .s10-enlarge .bar-val { font-size: 22px; }
+    .s10-enlarge .bar-val.outside { font-size: 20px; }
+    .s10-enlarge .bar-label { font-size: 17px; width: 160px; }
+    .s10-enlarge .card-title { font-size: 18px; }
+    .s10-enlarge .card-annotation { font-size: 16px; }
+    .s10-enlarge .note-box { font-size: 18px; padding: 16px 24px; }
+    .s10-enlarge .bullet { font-size: 17px; }
+    .s10-enlarge .verdict-bar { font-size: 20px; padding: 22px 28px; }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:66.7%; background:var(--gold);"></div></div>
+  <div class="section-label" style="color:var(--gold);">Value Proposition 3 of 3 &middot; Post-Event Platform</div>
+
+  <div class="slide-body">
+    <div>
+      <div class="slide-title">TM Holds the World&rsquo;s Largest Provenance Asset &mdash; and Monetizes None of It</div>
+      <div class="slide-subtitle">637M tickets/year, each with artist, venue, date, seat. Christie&rsquo;s charges for provenance. TM gives it away.</div>
+    </div>
+
+    <div class="content-zone">
+
+      <!-- LEFT COL -->
+      <div style="grid-column:1/7; display:flex; flex-direction:column; gap:var(--gutter);">
+
+        <div class="card" style="border-top:3px solid var(--teal);">
+          <div class="card-title" style="color:var(--teal);">The authentication crisis</div>
+          <div class="donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="25" stroke="#e5e2dc" stroke-width="8"/>
+              <circle cx="30" cy="30" r="25" stroke="var(--red)" stroke-width="8" data-pct="25" class="donut-arc"/>
+              <circle cx="30" cy="30" r="25" stroke="var(--teal)" stroke-width="8" data-pct="50" data-offset="25" class="donut-arc"/>
+            </svg>
+            <div class="donut-legend">
+              <span style="color:var(--red);">&#9679;</span> <strong>20&ndash;30%</strong> of autographs fail authentication<br>
+              <span style="color:var(--teal);">&#9679;</span> Only <strong>50%</strong> of game-worn items pass<br>
+              <span style="color:var(--text-dim); font-style:italic; font-size:0.9em;">Heritage Auctions / ESPN, Feb 2026</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-top:3px solid var(--gold);">
+          <div class="card-title" style="color:var(--gold);">Authentication premium (PSA/Beckett)</div>
+          <div class="grade-bars" data-animate="grade">
+            <div class="grade-col">
+              <div class="grade-mult" style="color:var(--text-dim);">1&times;</div>
+              <div class="grade-inner" data-height="10%" style="background:var(--cream-warm); border:1px solid var(--border);"></div>
+              <div class="grade-name">Raw</div>
+              <div class="tip">Ungraded baseline price</div>
+            </div>
+            <div class="grade-col">
+              <div class="grade-mult" style="color:var(--gold);">3&times;</div>
+              <div class="grade-inner" data-height="30%" style="background:var(--gold);"></div>
+              <div class="grade-name">Modern</div>
+              <div class="tip">Modern cards in PSA 10</div>
+            </div>
+            <div class="grade-col">
+              <div class="grade-mult" style="color:var(--teal);">5&ndash;10&times;</div>
+              <div class="grade-inner" data-height="55%" style="background:var(--teal);"></div>
+              <div class="grade-name">Vintage</div>
+              <div class="tip">Vintage cards in PSA 10</div>
+            </div>
+            <div class="grade-col">
+              <div class="grade-mult" style="color:var(--yale);">8.5&times;</div>
+              <div class="grade-inner" data-height="75%" style="background:var(--yale);"></div>
+              <div class="grade-name">Iconic</div>
+              <div class="tip">Charizard 1st Ed: $1.9K &rarr; $16.3K</div>
+            </div>
+            <div class="grade-col">
+              <div class="grade-mult" style="color:var(--red);">37&times;</div>
+              <div class="grade-inner" data-height="100%" style="background:var(--red);"></div>
+              <div class="grade-name">Peak</div>
+              <div class="tip">Highest PSA-authenticated premiums</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="note-box" style="background:var(--gold-bg); border-left-color:var(--gold);">
+          <strong style="color:var(--gold);">50%</strong> of attendees kept physical stubs &middot; <strong style="color:var(--gold);">29%</strong> specifically collect tickets &middot; Teams now <em>sell</em> souvenir stubs &mdash; fans pay for what TM gives away digitally
+        </div>
+      </div>
+
+      <!-- RIGHT COL -->
+      <div style="grid-column:7/13; display:flex; flex-direction:column; gap:var(--gutter);">
+
+        <div class="card" style="border-top:3px solid var(--yale);">
+          <div class="card-title" style="color:var(--yale);">Addressable markets &mdash; TM&rsquo;s share today: $0</div>
+          <div class="bar-group" data-animate="bars">
+            <div class="bar-row">
+              <div class="bar-label">Sports memorabilia</div>
+              <div class="bar-track">
+                <div class="tip">$33B (2024) &rarr; $271B (2034) &middot; 22.1% CAGR</div>
+                <div class="bar-fill" data-width="100%" style="background:var(--gold);"><span class="bar-val">$271B</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Trading cards</div>
+              <div class="bar-track">
+                <div class="tip">61.6% of memorabilia &middot; $14.9B &rarr; $52.1B</div>
+                <div class="bar-fill" data-width="52%" style="background:var(--gold); opacity:0.75;"><span class="bar-val">$52B</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Phygital collectibles</div>
+              <div class="bar-track">
+                <div class="tip">$4.2B &rarr; $22.6B by 2033 &middot; 18.7% CAGR</div>
+                <div class="bar-fill" data-width="22%" style="background:var(--teal);"><span class="bar-val">$22.6B</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Concert merch</div>
+              <div class="bar-track">
+                <div class="tip">$13.4B &rarr; $16.3B by 2030 &middot; 1.6% CAGR</div>
+                <div class="bar-fill" data-width="16%" style="background:var(--yale);"><span class="bar-val">$16.3B</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Blockchain ticketing</div>
+              <div class="bar-track">
+                <div class="tip">$1.2B &rarr; $6.7B by 2033 &middot; ~21% CAGR</div>
+                <div class="bar-fill" data-width="7%" style="background:var(--teal-light);"><span class="bar-val outside">$6.7B</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-top:3px solid var(--teal);">
+          <div class="card-title" style="color:var(--teal);">Precedents: what works and what doesn&rsquo;t</div>
+          <div>
+            <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>NBA Top Shot:</strong> $1B+ sales, &ldquo;digital collectibles&rdquo; framing</div>
+            <div class="bullet"><span class="dot" style="background:var(--red);"></span>Peak $226M/mo &rarr; &lt;$2M/mo (&minus;99%) &mdash; no captive distribution</div>
+            <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Reddit:</strong> 20M wallets, never said &ldquo;NFT,&rdquo; blockchain invisible</div>
+            <div class="bullet"><span class="dot" style="background:var(--red);"></span>Discontinued &mdash; no permanent infrastructure commitment</div>
+          </div>
+        </div>
+
+        <div class="note-box" style="background:var(--teal-bg); border-left-color:var(--teal); color:var(--yale);">
+          TM already minted <strong>5M+ Live Stubs on Flow</strong>. Technology works. What was missing: a marketplace, pricing strategy, and fan education. Smart tickets provide all three.
+        </div>
+      </div>
+
+      <div class="verdict-bar" style="background:var(--gold-bg); border:1px solid var(--gold);">
+        TM owns every element for a billion-dollar collectible business &mdash; the tickets, the provenance, the distribution &mdash; it just hasn&rsquo;t monetized it.
+      </div>
+    </div>
+
+    <div class="slide-footer">Sources: Heritage Auctions/ESPN (Feb 2026), PSA/Beckett, Market Decipher [31], MIDiA [60], Dataintelo [61], Growth Market Reports [48], NBA Top Shot [65], Reddit [52], NPR (Oct 2024)</div>
+  </div>
+</div>
+
+<!-- ==================== S11: TICKET LIVES ON (PORT) ==================== -->
+<div class="slide data-viz s11-enlarge">
+  <style>
+    .s11-enlarge .sc-track { height: 72px; }
+    .s11-enlarge .sc-val { font-size: 26px; }
+    .s11-enlarge .sc-val.outside { font-size: 24px; }
+    .s11-enlarge .sc-label { font-size: 18px; width: 85px; }
+    .s11-enlarge .sc-math { font-size: 15px; padding-left: 97px; }
+    .s11-enlarge .scenario-header { font-size: 16px; }
+    .s11-enlarge .scenario-chart { gap: 10px; }
+    .s11-enlarge .bar-track { height: 48px; }
+    .s11-enlarge .bar-label { width: 110px !important; font-size: 17px; }
+    .s11-enlarge .bar-val { font-size: 20px; }
+    .s11-enlarge .bar-val.outside { font-size: 18px; }
+    .s11-enlarge .card-title { font-size: 18px; }
+    .s11-enlarge .card-annotation { font-size: 16px; }
+    .s11-enlarge .card-stat { font-size: 16px; }
+    .s11-enlarge .bullet { font-size: 17px; }
+    .s11-enlarge .info-bar { font-size: 17px; padding: 26px 32px; }
+    .s11-enlarge .verdict-bar { font-size: 20px; padding: 30px 36px; }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:73.3%; background:var(--gold);"></div></div>
+  <div class="section-label" style="color:var(--gold);">Value Proposition 3 of 3 &middot; Post-Event Platform</div>
+
+  <div class="slide-body">
+    <div>
+      <div class="slide-title">The Ticket Lives On. So Does the Revenue.</div>
+      <div class="slide-subtitle">Anti-scalping gets TM in the door. The memorabilia platform keeps TM in the building.</div>
+    </div>
+
+    <div class="content-zone">
+
+      <!-- How it works -->
+      <div class="card" style="grid-column:1/5; border-top:3px solid var(--teal);">
+        <div class="card-title" style="color:var(--teal);">How it works</div>
+        <div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Ticket locked pre-event &mdash; same UX, no external resale</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Post-event: token unlocks as collectible on TM marketplace</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>EU anti-scalping laws don&rsquo;t apply &mdash; it&rsquo;s memorabilia</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Artist earns royalty on every trade, forever</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span>TM earns marketplace fees &mdash; perpetually</div>
+        </div>
+      </div>
+
+      <!-- Discretionary vs Captive -->
+      <div style="grid-column:5/13; display:grid; grid-template-columns:1fr 1fr; gap:var(--gutter);">
+        <div class="card" style="border-top:3px solid var(--red);">
+          <div class="card-title" style="color:var(--red);">Discretionary adoption = failure</div>
+          <div class="card-annotation">Adoption rate (% of addressable users)</div>
+          <div class="bar-group" data-animate="bars">
+            <div class="bar-row">
+              <div class="bar-label" style="width:80px;">Starbucks</div>
+              <div class="bar-track">
+                <div class="tip">58K of 34M members &middot; Shut down Mar 2024</div>
+                <div class="bar-fill" data-width="3%" style="background:var(--red); min-width:3px;"><span class="bar-val outside" style="color:var(--red);">0.17%</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:80px;">Nike RTFKT</div>
+              <div class="bar-track">
+                <div class="tip">$185M = 0.4% of $46.3B &middot; Shut down Jan 2025</div>
+                <div class="bar-fill" data-width="5%" style="background:var(--red); min-width:3px;"><span class="bar-val outside" style="color:var(--red);">0.4%</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:80px;">Top Shot</div>
+              <div class="bar-track">
+                <div class="tip">$226M/mo peak &rarr; &lt;$2M/mo &middot; 99% decline</div>
+                <div class="bar-fill" data-width="7%" style="background:var(--red); min-width:3px;"><span class="bar-val outside" style="color:var(--red);">&minus;99%</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-stat" style="color:var(--red);">96% of brand NFT projects died (BlockEden / dappGambl)</div>
+        </div>
+
+        <div class="card" style="border-top:3px solid var(--teal);">
+          <div class="card-title" style="color:var(--teal);">Captive distribution = success</div>
+          <div class="card-annotation">Scale achieved (blockchain invisible to users)</div>
+          <div class="bar-group" data-animate="bars">
+            <div class="bar-row">
+              <div class="bar-label" style="width:80px;">Reddit</div>
+              <div class="bar-track">
+                <div class="tip">20M wallets &middot; Never said &ldquo;NFT&rdquo; &middot; Credit card only</div>
+                <div class="bar-fill" data-width="80%" style="background:var(--teal);"><span class="bar-val">20M wallets</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:80px;">GET Protocol</div>
+              <div class="bar-track">
+                <div class="tip">8.5M+ on-chain tickets &middot; 4 countries &middot; Zero scalping</div>
+                <div class="bar-fill" data-width="35%" style="background:var(--teal);"><span class="bar-val">8.5M tickets</span></div>
+              </div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label" style="width:80px;">Walmart</div>
+              <div class="bar-track">
+                <div class="tip">200+ suppliers mandated &middot; Mango: 7 days &rarr; 2.2 sec</div>
+                <div class="bar-fill" data-width="90%" style="background:var(--teal);"><span class="bar-val">200+ suppliers</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-stat" style="color:var(--teal);">TM: 637M tickets/yr &mdash; largest captive distribution in entertainment</div>
+        </div>
+      </div>
+
+      <!-- Revenue scenarios -->
+      <div class="scenario-chart">
+        <div class="scenario-header">Revenue scenarios &mdash; digital memorabilia (637M tickets/yr)</div>
+        <div class="sc-row">
+          <div class="sc-label">Bear</div>
+          <div class="sc-track">
+            <div class="tip">3% &times; 637M &times; $5 avg &middot; Conservative estimate</div>
+            <div class="sc-fill" data-width="5.3%" style="background:var(--yale);"><span class="sc-val outside">~$111M/yr</span></div>
+          </div>
+        </div>
+        <div class="sc-math">3% conversion &middot; $5 avg value</div>
+        <div class="sc-row">
+          <div class="sc-label" style="color:var(--gold);">Base</div>
+          <div class="sc-track">
+            <div class="tip">5% &times; 637M &times; $10 avg &middot; $191M to TM + $128M to venues</div>
+            <div class="sc-fill" data-width="15.2%" style="background:var(--gold);"><span class="sc-val">~$319M/yr</span></div>
+          </div>
+        </div>
+        <div class="sc-math">5% conversion &middot; $10 avg value</div>
+        <div class="sc-row">
+          <div class="sc-label" style="color:var(--teal);">Bull</div>
+          <div class="sc-track">
+            <div class="tip">15% &times; 637M &times; $15 avg &middot; Top Shot hit $1B in 18 months</div>
+            <div class="sc-fill" data-width="100%" style="background:var(--teal);"><span class="sc-val">~$2.1B/yr</span></div>
+          </div>
+        </div>
+        <div class="sc-math">15% conversion &middot; $15 avg value</div>
+      </div>
+
+      <div class="info-bar">
+        Kill gate: <strong style="color:var(--red);">3%+ collectible conversion</strong> in Netherlands pilot validates memorabilia. Below 3%: anti-scalping only ($497M). Above 3%: full platform ($915M+).
+      </div>
+
+      <div class="verdict-bar" style="background:var(--teal-bg); border:1px solid var(--teal);">
+        Anti-scalping is the entry point. The collectible platform is the compounding business &mdash; perpetual fees on every trade, in every market, forever.
+      </div>
+    </div>
+
+    <div class="slide-footer">Sources: Econsultancy [50], AInvest/Nike [51], The Ringer [58], Reddit [52], Walmart [55], GET Protocol [21], BlockEden [44], dappGambl (2023)</div>
+  </div>
+</div>
+
+<!-- ==================== S12: REVENUE MODEL (PORT) ==================== -->
+<div class="slide data-viz s12-enlarge">
+  <style>
+    .s12-enlarge .content-zone { row-gap: 18px; }
+    .s12-enlarge .rev-stack-bar { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; justify-content: space-between; }
+    .s12-enlarge .rev-bar-wrap { height: 140px; }
+    .s12-enlarge .seg-val { font-size: 28px; }
+    .s12-enlarge .seg-label { font-size: 15px; }
+    .s12-enlarge .rev-seg { padding: 14px 18px; }
+    .s12-enlarge .rev-seg:last-child .seg-val { font-size: 20px !important; }
+    .s12-enlarge .rev-total-val { font-size: 56px; }
+    .s12-enlarge .rev-total-label { font-size: 19px; }
+    .s12-enlarge .rev-total-row { padding-top: 10px; }
+    .s12-enlarge .rev-legend-item { font-size: 15px; }
+    .s12-enlarge .rev-legend-dot { width: 14px; height: 14px; }
+    .s12-enlarge .rev-stack-title { font-size: 17px; }
+    .s12-enlarge .wf-section { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+    .s12-enlarge .waterfall { height: 320px; gap: 18px; }
+    .s12-enlarge .wf-val { font-size: 22px; }
+    .s12-enlarge .wf-name { font-size: 16px; }
+    .s12-enlarge .wf-bar { min-width: 50px; }
+    .s12-enlarge .wf-col:nth-child(4) .wf-val { font-size: 18px !important; }
+    .s12-enlarge .chart-header { font-size: 19px; padding-bottom: 8px; }
+    .s12-enlarge .card { padding: 28px; min-height: 180px; }
+    .s12-enlarge .card-title { font-size: 18px; }
+    .s12-enlarge .bullet { font-size: 17px; }
+    .s12-enlarge .card-stat { font-size: 16px; }
+    .s12-enlarge .net-hero { font-size: 56px; }
+    .s12-enlarge .cannibal-section { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; }
+    .s12-enlarge .cannibal-section .card { flex: 1; justify-content: center; }
+    .s12-enlarge .cannibal-item { padding: 14px; }
+    .s12-enlarge .cannibal-item .mult { font-size: 40px; }
+    .s12-enlarge .cannibal-item .old { font-size: 15px; }
+    .s12-enlarge .cannibal-item .new { font-size: 15px; }
+    .s12-enlarge .cannibal-item .who { font-size: 14px; }
+    .s12-enlarge .cannibal-item .arrow { font-size: 16px; }
+    .s12-enlarge .cannibal-grid { gap: 20px; }
+    .s12-enlarge .verdict-bar { font-size: 16px; padding: 14px 28px; }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:80%; background:var(--gold);"></div></div>
+  <div class="section-label" style="color:var(--gold);">Revenue Model</div>
+
+  <div class="slide-body">
+    <div>
+      <div class="slide-title">From $740M Dying to $915M New</div>
+      <div class="slide-subtitle">Cannibalization is honest: the revenue at risk is dying under court order regardless.</div>
+    </div>
+
+    <div class="content-zone">
+
+      <!-- Revenue stacked bar -->
+      <div class="rev-stack-bar">
+        <div class="rev-stack-title">Revenue stack (base case, annual)</div>
+        <div class="rev-bar-wrap">
+          <div class="rev-seg" style="flex-basis:54.3%; background:var(--teal);">
+            <span class="seg-val">$497M</span>
+            <span class="seg-label">Fair resale</span>
+            <span class="tip">Global, code-enforced fair resale fees</span>
+          </div>
+          <div class="rev-seg" style="flex-basis:34.9%; background:var(--gold);">
+            <span class="seg-val">$319M</span>
+            <span class="seg-label">Memorabilia</span>
+            <span class="tip">5% conversion &times; 637M tickets &times; $10 avg</span>
+          </div>
+          <div class="rev-seg" style="flex-basis:10.8%; background:var(--yale);">
+            <span class="seg-val" style="font-size:14px;">$99M</span>
+            <span class="seg-label">Virtual</span>
+            <span class="tip">Virtual concerts + artist royalty infrastructure</span>
+          </div>
+        </div>
+        <div class="rev-legend">
+          <div class="rev-legend-item"><span class="rev-legend-dot" style="background:var(--teal);"></span>Fair resale &mdash; global, code-enforced</div>
+          <div class="rev-legend-item"><span class="rev-legend-dot" style="background:var(--gold);"></span>Digital memorabilia &mdash; 5% conv, $10 avg</div>
+          <div class="rev-legend-item"><span class="rev-legend-dot" style="background:var(--yale);"></span>Virtual concerts + artist royalties</div>
+        </div>
+        <div class="rev-total-row">
+          <span class="rev-total-label">Total new annual revenue</span>
+          <span class="rev-total-val">$915M</span>
+        </div>
+      </div>
+
+      <!-- Net position + investment -->
+      <div style="grid-column:7/13; display:flex; flex-direction:column; gap:var(--gutter);">
+        <div class="card" style="border-top:3px solid var(--teal);">
+          <div class="card-title" style="color:var(--teal);">Net position</div>
+          <div class="net-hero">+$175M net gain</div>
+          <div>
+            <div class="bullet"><span class="dot" style="background:var(--teal);"></span>$915M new &minus; $740M at-risk under DOJ = <strong>+$175M</strong></div>
+            <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Infrastructure moat across 35 countries</div>
+            <div class="bullet"><span class="dot" style="background:var(--teal);"></span>Self-cannibalization extends revenue +24%</div>
+          </div>
+        </div>
+        <div class="card" style="border-top:3px solid var(--yale);">
+          <div class="card-title" style="color:var(--yale);">Investment required</div>
+          <div>
+            <div class="bullet"><span class="dot" style="background:var(--yale);"></span><strong>$55&ndash;95M</strong> over 3 years (1.8% of ticketing revenue)</div>
+            <div class="bullet"><span class="dot" style="background:var(--yale);"></span>TM&rsquo;s <strong>$1B+</strong> existing tech investment = foundations in place</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Waterfall chart -->
+      <div class="wf-section" style="grid-column:1/7;">
+        <div class="chart-header">Revenue waterfall &mdash; dying fees &rarr; new streams</div>
+        <div class="waterfall" data-animate="waterfall">
+          <div class="wf-col">
+            <div class="wf-bar" data-height="81%" style="background:var(--red);"><span class="wf-val">$740M</span></div>
+            <div class="wf-name">Dying<br>resale fees</div>
+          </div>
+          <div class="wf-col">
+            <div class="wf-bar" data-height="54%" style="background:var(--teal);"><span class="wf-val">$497M</span></div>
+            <div class="wf-name">Fair<br>resale</div>
+          </div>
+          <div class="wf-col">
+            <div class="wf-bar" data-height="35%" style="background:var(--gold);"><span class="wf-val">$319M</span></div>
+            <div class="wf-name">Digital<br>memorabilia</div>
+          </div>
+          <div class="wf-col">
+            <div class="wf-bar" data-height="11%" style="background:var(--yale);"><span class="wf-val" style="font-size:11px;">$99M</span></div>
+            <div class="wf-name">Virtual +<br>royalties</div>
+          </div>
+          <div class="wf-col">
+            <div class="wf-bar" data-height="100%" style="background:linear-gradient(180deg, var(--teal), var(--yale));"><span class="wf-val">$915M</span></div>
+            <div class="wf-name" style="font-weight:700; color:var(--yale);">Total new</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Self-cannibalization -->
+      <div class="cannibal-section" style="grid-column:7/13;">
+        <div class="chart-header">Self-cannibalization precedents</div>
+        <div class="card">
+          <div class="cannibal-grid">
+            <div class="cannibal-item">
+              <div class="old">iPod $8B</div>
+              <div class="arrow">&darr;</div>
+              <div class="new">iPhone $200B+</div>
+              <div class="mult">25&times;</div>
+              <div class="who">Apple</div>
+            </div>
+            <div class="cannibal-item">
+              <div class="old">DVD $3.2B</div>
+              <div class="arrow">&darr;</div>
+              <div class="new">Stream $33.7B</div>
+              <div class="mult">10&times;</div>
+              <div class="who">Netflix</div>
+            </div>
+            <div class="cannibal-item">
+              <div class="old">Retail 2&ndash;5%</div>
+              <div class="arrow">&darr;</div>
+              <div class="new">AWS 24&ndash;30%</div>
+              <div class="mult">6&times;</div>
+              <div class="who">Amazon (margin)</div>
+            </div>
+          </div>
+          <div style="font-size:var(--t6); color:var(--text-dim); text-align:center; margin-top:6px; font-style:italic;">
+            Platform transformations that replace condemned infrastructure outperform status quo defenders. Closest analogy: EMV chip migration &mdash; mandated, invisible to users, security-driven.
+          </div>
+        </div>
+      </div>
+
+      <div class="verdict-bar" style="background:var(--red-bg); border:1px solid var(--red);">
+        $740M in resale fees faces compounding risk: DOJ fee caps, remedy trial, 26 state AGs. Smart tickets don&rsquo;t cannibalize a healthy business &mdash; they replace a condemned one and add $175M net.
+      </div>
+    </div>
+
+    <div class="slide-footer">Sources: DOJ [5], FTC [37], LN FY2025 [32], European Business Review [47], TM tech investment [59], IMD Business School, McKinsey</div>
+  </div>
+</div>
+
+<!-- ==================== S13: WALMART MODEL ==================== -->
+<div class="slide slide-narrative s13-rebuild">
+  <style>
+    .s13-rebuild .content-zone {
+      align-content: start;
+      row-gap: 26px;
+    }
+    .s13-rebuild .stat-hero {
+      min-height: 200px;
+      padding: 30px 30px;
+    }
+    .s13-rebuild .stat-hero .hero-num {
+      font-size: 72px;
+    }
+    .s13-rebuild .stat-hero .hero-label {
+      font-size: 19px;
+    }
+    .s13-rebuild .new-card {
+      padding: 42px 36px;
+    }
+    .s13-rebuild .new-card .card-body {
+      font-size: 26px;
+      line-height: 1.8;
+      gap: 16px;
+    }
+    .s13-rebuild .new-card .card-head {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    .s13-rebuild .tm-position {
+      grid-column: 1/13; background: var(--yale); border-radius: var(--radius);
+      padding: 34px 38px; color: white;
+    }
+    .s13-rebuild .tm-position .pos-title {
+      font-weight: 700; font-size: 15px;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--teal-light); margin-bottom: 8px;
+    }
+    .s13-rebuild .tm-position .pos-body {
+      font-size: 22px; line-height: 1.65;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .s13-rebuild .stakeholder-strip .stake-card {
+      padding: 22px 24px;
+    }
+    .s13-rebuild .stakeholder-strip .stake-change {
+      font-size: 22px;
+    }
+    .s13-rebuild .stakeholder-strip .stake-how {
+      font-size: 15px;
+    }
+  </style>
+  <div class="progress-bar"><div class="progress-fill" style="width:86.7%; background:var(--yale);"></div></div>
+  <div class="section-label" style="color:var(--yale);">Implementation</div>
+  <div class="slide-body fill">
+    <div>
+      <div class="slide-title">Walmart Model: Mandate, Don&rsquo;t Ask</div>
+      <div class="slide-subtitle">TM controls 86% of the major venue market. It mandates format &mdash; as it mandated SafeTix in 2019.</div>
+    </div>
+    <div class="content-zone">
+      <!-- Stat hero row -->
+      <div class="stat-hero" style="grid-column:1/5; border-top:3px solid var(--red);">
+        <div class="hero-num" style="color:var(--red);">96%</div>
+        <div class="hero-label">of brand NFT projects died</div>
+      </div>
+      <div class="stat-hero" style="grid-column:5/9; border-top:3px solid var(--yale);">
+        <div class="hero-num" style="color:var(--yale);">86%</div>
+        <div class="hero-label">of major venue market = TM control</div>
+      </div>
+      <div class="stat-hero" style="grid-column:9/13; border-top:3px solid var(--teal);">
+        <div class="hero-num" style="color:var(--teal);">637M</div>
+        <div class="hero-label">captive tickets/year</div>
+      </div>
+      <!-- Two-column proof grid -->
+      <div class="new-card" style="grid-column:1/7; border-top:3px solid var(--red);">
+        <div class="card-head" style="color:var(--red);">What fails &mdash; discretionary adoption</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>Starbucks:</strong> 58K/34M = 0.17%. Opt-in. Shut down March 2024.</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>Nike RTFKT:</strong> $185M = 0.4% of total. Class-action. Shut down Jan 2025.</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>NBA Top Shot:</strong> $226M/mo &rarr; &lt;$2M/mo. 99% decline.</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>TradeLens:</strong> Asked competitors to join. Refused. Shut down Q1 2023.</div>
+          <div class="bullet"><span class="dot" style="background:var(--red);"></span><strong>Pattern:</strong> blockchain fails when participants must actively choose it.</div>
+        </div>
+      </div>
+      <div class="new-card" style="grid-column:7/13; border-top:3px solid var(--teal);">
+        <div class="card-head" style="color:var(--teal);">What works &mdash; captive distribution</div>
+        <div class="card-body">
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Walmart:</strong> mandated 200+ suppliers. Trace: 7 days &rarr; 2.2 sec.</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Reddit:</strong> 20M wallets. Never said &ldquo;NFT.&rdquo; Invisible blockchain.</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>GET Protocol:</strong> 8.5M+ tickets, scalp-free. Default format.</div>
+          <div class="bullet"><span class="dot" style="background:var(--teal);"></span><strong>Pattern:</strong> captive distribution succeeds when one company mandates.</div>
+        </div>
+      </div>
+      <!-- TM's position -->
+      <div class="tm-position">
+        <div class="pos-title">TM&rsquo;s position</div>
+        <div class="pos-body">
+          <div class="bullet" style="color:rgba(255,255,255,0.85);"><span class="dot" style="background:var(--teal-light);"></span>637M tickets/year = captive distribution at unprecedented scale &mdash; 12&times; the entire NFT market</div>
+          <div class="bullet" style="color:rgba(255,255,255,0.85);"><span class="dot" style="background:var(--teal-light);"></span>Fans don&rsquo;t choose the ticket format &mdash; venues require it. Venues comply because TM controls 86% of major venues.</div>
+          <div class="bullet" style="color:rgba(255,255,255,0.85);"><span class="dot" style="background:var(--teal-light);"></span><strong>TM mandates. The rest follows.</strong> Same playbook as SafeTix rollout in 2019 &mdash; venues adopted within 18 months.</div>
+        </div>
+      </div>
+      <!-- Stakeholder strip -->
+      <div class="stakeholder-strip">
+        <div class="stake-card" style="border-top:3px solid var(--yale);">
+          <div class="stake-who" style="color:var(--yale);">TM Internal</div>
+          <div class="stake-change">Model shift</div>
+          <div class="stake-how">DOJ = burning platform. Org resistance is the risk.</div>
+        </div>
+        <div class="stake-card" style="border-top:3px solid var(--teal);">
+          <div class="stake-who">Venue Partners</div>
+          <div class="stake-change">Software update</div>
+          <div class="stake-how">No new hardware. 90-day fallback. New revenue: $178M/yr.</div>
+        </div>
+        <div class="stake-card" style="border-top:3px solid var(--gold);">
+          <div class="stake-who" style="color:var(--gold);">Artists</div>
+          <div class="stake-change">Royalty opt-in</div>
+          <div class="stake-how">Auto-pay royalties + fan data. Recruit 3-5 flagships first.</div>
+        </div>
+        <div class="stake-card" style="border-top:3px solid var(--teal);">
+          <div class="stake-who">Fans</div>
+          <div class="stake-change">Nothing changes</div>
+          <div class="stake-how">No wallet, no crypto. Reddit model: invisible.</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer">Sources: BlockEden [44], Econsultancy [50], Nike [51], Top Shot [58], TradeLens [46], Walmart [55], Reddit [52], GET [21], NLR [54]</div>
+  </div>
+</div>
+
+<!-- ==================== S14: HISTORY — SafeTix Playbook ==================== -->
+<div class="slide s-history">
+  <style>
+    .s-history { background: var(--cream); color: var(--yale); }
+    .s-history .content-zone { align-content: center; row-gap: 26px; }
+    .s-history .timeline-row {
+      grid-column: 1/13;
+      position: relative;
+      padding: 52px 20px 44px;
+      background: var(--yale);
+      border-radius: 8px;
+    }
+    .s-history .timeline-track {
+      position: absolute;
+      top: 50%; left: 0; right: 0; height: 3px;
+      background: linear-gradient(to right, var(--teal-light) 0%, var(--gold) 50%, var(--red-light) 100%);
+      transform: translateY(-50%);
+    }
+    .s-history .timeline-events {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      position: relative; z-index: 2;
+    }
+    .s-history .tl-event {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; padding: 0 10px;
+    }
+    .s-history .tl-year {
+      font-family: var(--serif); font-size: 28px; font-weight: 800;
+      color: var(--teal-light); line-height: 1;
+    }
+    .s-history .tl-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%; background: var(--teal-light);
+      margin: 10px 0; border: 3px solid var(--yale-deep);
+      box-shadow: 0 0 0 2px var(--teal-light);
+    }
+    .s-history .tl-event:nth-child(3) .tl-dot,
+    .s-history .tl-event:nth-child(3) .tl-year { color: var(--gold); }
+    .s-history .tl-event:nth-child(3) .tl-dot { background: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+    .s-history .tl-event:nth-child(4) .tl-dot,
+    .s-history .tl-event:nth-child(4) .tl-year { color: var(--gold); }
+    .s-history .tl-event:nth-child(4) .tl-dot { background: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+    .s-history .tl-event:nth-child(5) .tl-dot,
+    .s-history .tl-event:nth-child(5) .tl-year { color: var(--red-light); }
+    .s-history .tl-event:nth-child(5) .tl-dot { background: var(--red-light); box-shadow: 0 0 0 2px var(--red-light); }
+    .s-history .tl-label {
+      font-family: var(--body); font-size: 15px;
+      color: rgba(255,255,255,0.9); line-height: 1.5;
+      margin-top: 6px;
+    }
+    .s-history .lessons-grid {
+      grid-column: 1/13;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
+    }
+    .s-history .lesson-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 36px 28px;
+      display: flex; flex-direction: column; gap: 12px;
+      border-top: 3px solid var(--teal);
+      min-height: 280px;
+    }
+    .s-history .lesson-num {
+      font-family: var(--serif); font-size: 48px; font-weight: 800;
+      color: var(--teal); line-height: 1; opacity: 0.25;
+    }
+    .s-history .lesson-head {
+      font-family: var(--serif); font-size: 24px; font-weight: 700;
+      color: var(--yale);
+    }
+    .s-history .lesson-body {
+      font-family: var(--body); font-size: 16px;
+      color: #444; line-height: 1.65;
+    }
+    .s-history .lesson-body strong { color: var(--teal); font-weight: 600; }
+    .s-history .closer {
+      grid-column: 1/13;
+      font-family: var(--serif); font-style: italic;
+      font-size: 20px;
+      color: var(--yale);
+      text-align: center;
+      padding: 24px 40px;
+      background: var(--yale-light);
+      border-radius: 6px;
+      border-left: 4px solid var(--teal);
+    }
+  </style>
+  <div class="progress-bar"><div class="progress-fill"></div></div>
+  <div class="section-label" style="color:var(--yale);">Implementation</div>
+  <div class="slide-body fill">
+    <div class="title-zone">
+      <div class="slide-title" style="color:var(--yale);">TM has done this once already. The playbook works.</div>
+      <div class="slide-subtitle" style="color:var(--text-dim);">SafeTix mandated 2019 &rarr; 90% adoption in 18 months. Smart tickets is the same execution model &mdash; operational risk, not strategic risk.</div>
+    </div>
+    <div class="content-zone">
+      <div class="timeline-row">
+        <div class="timeline-track"></div>
+        <div class="timeline-events">
+          <div class="tl-event">
+            <div class="tl-year">2017</div>
+            <div class="tl-dot"></div>
+            <div class="tl-label">SafeTix R&amp;D begins. TM commits to digital-first ticketing roadmap as part of $1B+ tech investment.</div>
+          </div>
+          <div class="tl-event">
+            <div class="tl-year">2018</div>
+            <div class="tl-dot"></div>
+            <div class="tl-label">SafeTix piloted at MLB All-Star Game and select major sports events. Quiet rollout.</div>
+          </div>
+          <div class="tl-event">
+            <div class="tl-year">2019</div>
+            <div class="tl-dot"></div>
+            <div class="tl-label">TM mandates SafeTix at NFL stadiums + all Live Nation venues. The mandate phase begins.</div>
+          </div>
+          <div class="tl-event">
+            <div class="tl-year">2021</div>
+            <div class="tl-dot"></div>
+            <div class="tl-label">90%+ adoption across major US/UK venues. Press cycle settled. Fan complaints normalized.</div>
+          </div>
+          <div class="tl-event">
+            <div class="tl-year">2026</div>
+            <div class="tl-dot"></div>
+            <div class="tl-label">SafeTix becomes DOJ exhibit A in monopoly verdict. Protected the moat. Now liability.</div>
+          </div>
+        </div>
+      </div>
+      <div class="lessons-grid">
+        <div class="lesson-card">
+          <div class="lesson-num">01</div>
+          <div class="lesson-head">Mandate timing wins</div>
+          <div class="lesson-body">TM controlled the rollout timeline. Flagship venues complied first; mid-tier followed within 12&ndash;18 months. <strong>Smart tickets follows the same arc</strong> &mdash; pilot, flagship mandate, broad rollout &mdash; with the same execution muscle TM has already built.</div>
+        </div>
+        <div class="lesson-card">
+          <div class="lesson-num">02</div>
+          <div class="lesson-head">The press cycle is brief</div>
+          <div class="lesson-body">Initial fan complaints about &ldquo;no more PDF tickets&rdquo; normalized within 6 months. <strong>Lesson for smart tickets:</strong> lead with &ldquo;collectible ticket&rdquo; framing. Never say &ldquo;NFT&rdquo; or &ldquo;blockchain&rdquo; in consumer comms. Mirror Reddit&rsquo;s exact playbook.</div>
+        </div>
+        <div class="lesson-card">
+          <div class="lesson-num">03</div>
+          <div class="lesson-head">Same mechanism, new upside</div>
+          <div class="lesson-body">SafeTix was purely defensive &mdash; anti-scalping only. <strong>Smart tickets is offensive AND defensive</strong>: anti-scalping + memorabilia revenue + legal moat across 35 countries. Same operational risk profile, dramatically larger payoff.</div>
+        </div>
+      </div>
+      <div class="closer">
+        &ldquo;The execution model is proven. The strategic question isn&rsquo;t <em>whether</em> TM can mandate infrastructure &mdash; it&rsquo;s whether to mandate now, or wait until DOJ mandates change anyway.&rdquo;
+      </div>
+    </div>
+    <div class="slide-footer">Sources: TM 10-K filings 2018&ndash;2024 · Live Nation analyst day 2019 · DOJ v. Live Nation monopoly verdict (Apr 2026) · Pollstar venue adoption trackers</div>
+  </div>
+</div>
+
+<!-- ==================== S15: DECISION — Build vs Buy ==================== -->
+<div class="slide s-decision">
+  <style>
+    .s-decision .matrix-wrap { grid-column: 1/13; overflow: visible; padding-top: 12px; }
+    .s-decision { background: var(--cream); color: var(--yale); }
+    .s-decision .content-zone { align-content: center; row-gap: 26px; }
+    .s-decision .decision-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-family: var(--sans);
+      font-size: 15px;
+    }
+    .s-decision .decision-table th {
+      font-weight: 700;
+      padding: 22px 16px;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+      vertical-align: bottom;
+      background: var(--cream);
+    }
+    .s-decision .decision-table th.col-build,
+    .s-decision .decision-table th.col-songkick,
+    .s-decision .decision-table th.col-license { color: var(--text-dim); background: var(--cream-warm); }
+    .s-decision .decision-table th.col-winner {
+      background: var(--teal-bg);
+      color: var(--teal);
+      border: 2px solid var(--teal);
+      border-bottom: 2px solid var(--teal);
+      position: relative;
+      border-radius: 6px 6px 0 0;
+    }
+    .s-decision .decision-table th.col-winner::before {
+      content: 'RECOMMENDED';
+      position: absolute;
+      top: -10px; left: 50%; transform: translateX(-50%);
+      font-size: 9px; letter-spacing: 0.15em;
+      background: var(--teal); color: white;
+      padding: 3px 10px; border-radius: 3px;
+    }
+    .s-decision .decision-table td {
+      padding: 20px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.6;
+    }
+    .s-decision .decision-table td.dim {
+      font-weight: 700;
+      color: var(--yale);
+      background: var(--cream);
+      font-size: 13px;
+    }
+    .s-decision .decision-table td.winner-cell {
+      background: rgba(0,168,150,0.06);
+      border-left: 2px solid var(--teal);
+      border-right: 2px solid var(--teal);
+      color: var(--text);
+    }
+    .s-decision .decision-table td.winner-cell strong { color: var(--teal); }
+    .s-decision .decision-table tr:last-child td.winner-cell { border-bottom: 2px solid var(--teal); }
+    .s-decision .decision-table .badge-good { color: var(--teal); font-weight: 700; }
+    .s-decision .decision-table .badge-bad { color: var(--red); font-weight: 700; }
+    .s-decision .decision-table .badge-mid { color: var(--gold); font-weight: 700; }
+    .s-decision .decision-table td.col-cell { font-size: 14px; color: #555; }
+    .s-decision .verdict {
+      grid-column: 1/13;
+      background: var(--yale); color: white;
+      border-radius: 8px;
+      padding: 28px 32px;
+      font-family: var(--body); font-size: 17px;
+      line-height: 1.55;
+      display: flex; gap: 20px; align-items: center;
+    }
+    .s-decision .verdict-num {
+      font-family: var(--serif); font-size: 48px; font-weight: 800;
+      color: var(--teal-light); line-height: 1;
+    }
+    .s-decision .verdict-text { flex: 1; }
+    .s-decision .verdict-text strong { color: var(--teal-light); }
+  </style>
+  <div class="progress-bar"><div class="progress-fill"></div></div>
+  <div class="section-label" style="color:var(--yale);">Roadmap</div>
+  <div class="slide-body fill">
+    <div class="title-zone">
+      <div class="slide-title" style="color:var(--yale);">Build vs. Buy vs. Acquire &mdash; the $5&ndash;15M decision</div>
+      <div class="slide-subtitle" style="color:var(--text-dim);">Four options evaluated across seven dimensions. GET Protocol distressed acquisition wins on every dimension.</div>
+    </div>
+    <div class="content-zone">
+      <div class="matrix-wrap">
+        <table class="decision-table">
+          <thead>
+            <tr>
+              <th style="width: 18%;">Dimension</th>
+              <th class="col-build">Build from scratch</th>
+              <th class="col-songkick">Acquire Songkick (precedent)</th>
+              <th class="col-winner">Acquire GET Protocol</th>
+              <th class="col-license">License / Partner</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="dim">Cost</td>
+              <td class="col-cell"><span class="badge-bad">$150M+</span> over 3 years (engineering + audit + ops)</td>
+              <td class="col-cell"><span class="badge-mid">$110M</span> (TM 2017 acq, never deployed)</td>
+              <td class="winner-cell"><strong>$5&ndash;15M</strong> distressed (90%+ discount vs. build)</td>
+              <td class="col-cell"><span class="badge-mid">$5M/yr</span> + revenue share (perpetual cost)</td>
+            </tr>
+            <tr>
+              <td class="dim">Time to market</td>
+              <td class="col-cell"><span class="badge-bad">24&ndash;36 mo</span> (greenfield)</td>
+              <td class="col-cell"><span class="badge-mid">12&ndash;18 mo</span> (port + audit)</td>
+              <td class="winner-cell"><strong>3&ndash;6 mo</strong> (already live in 4 countries)</td>
+              <td class="col-cell"><span class="badge-mid">6&ndash;12 mo</span> (integration)</td>
+            </tr>
+            <tr>
+              <td class="dim">IP &amp; ownership</td>
+              <td class="col-cell"><span class="badge-good">Full</span> (built proprietary)</td>
+              <td class="col-cell"><span class="badge-mid">Partial</span> (legacy stack)</td>
+              <td class="winner-cell"><strong>Full + open-source posture</strong> (legal moat against monopoly framing)</td>
+              <td class="col-cell"><span class="badge-bad">Partial</span> (vendor terms)</td>
+            </tr>
+            <tr>
+              <td class="dim">Existing user base</td>
+              <td class="col-cell"><span class="badge-bad">None</span></td>
+              <td class="col-cell"><span class="badge-bad">None</span> (never deployed live)</td>
+              <td class="winner-cell"><strong>8.5M+ tickets, 4 countries</strong>, 6 years operational data</td>
+              <td class="col-cell"><span class="badge-mid">Vendor&rsquo;s</span> (not TM&rsquo;s)</td>
+            </tr>
+            <tr>
+              <td class="dim">Talent acquired</td>
+              <td class="col-cell"><span class="badge-bad">Build new team</span> (12+ engineers, 18 mo recruit)</td>
+              <td class="col-cell"><span class="badge-bad">None retained</span> from 2017</td>
+              <td class="winner-cell"><strong>6 blockchain engineers</strong> with operational scar tissue</td>
+              <td class="col-cell"><span class="badge-bad">None</span></td>
+            </tr>
+            <tr>
+              <td class="dim">Track record</td>
+              <td class="col-cell"><span class="badge-bad">Zero</span> &mdash; pure execution risk</td>
+              <td class="col-cell"><span class="badge-bad">Zero</span> deployments to date</td>
+              <td class="winner-cell"><strong>0 scalping incidents</strong> across 8.5M tickets</td>
+              <td class="col-cell"><span class="badge-mid">Vendor-dependent</span></td>
+            </tr>
+            <tr>
+              <td class="dim">Strategic fit</td>
+              <td class="col-cell"><span class="badge-mid">Custom</span> (slow but tailored)</td>
+              <td class="col-cell"><span class="badge-bad">Sunk cost rationalization</span></td>
+              <td class="winner-cell"><strong>Open architecture = legal defense</strong> against DOJ lock-in framing</td>
+              <td class="col-cell"><span class="badge-bad">Strategic dependency</span> on third party</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="verdict">
+        <div class="verdict-num">$5&ndash;15M</div>
+        <div class="verdict-text"><strong>Acquire GET Protocol distressed.</strong> Wins on all 7 dimensions &mdash; cost, speed, IP, users, talent, track record, strategic fit. OPEN trades at distressed valuations following 2024&ndash;25 crypto winter; <strong>the acquisition window is open now and likely closed by Q1 2027</strong>.</div>
+      </div>
+    </div>
+    <div class="slide-footer">Sources: TM Songkick acquisition disclosure (2017 10-K) &middot; GET Protocol / OPEN financials Q3 2025 &middot; Industry blockchain ticketing build estimates</div>
+  </div>
+</div>
+
+<!-- ==================== S16: PILOT + SCALE MERGED ==================== -->
+<div class="slide s-pilot-scale">
+  <style>
+    .s-pilot-scale { background: var(--cream); color: var(--yale); }
+    .s-pilot-scale .content-zone {
+      row-gap: 22px;
+      align-content: center;
+    }
+    .s-pilot-scale .reason-grid {
+      grid-column: 1/13;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
+    }
+    .s-pilot-scale .reason-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      padding: 28px 24px;
+      display: flex; flex-direction: column; gap: 8px;
+      position: relative;
+      border-left: 3px solid var(--teal);
+    }
+    .s-pilot-scale .reason-num {
+      font-family: var(--serif); font-size: 48px; font-weight: 800;
+      color: var(--teal); line-height: 0.9; opacity: 0.18;
+      position: absolute; top: 10px; right: 16px;
+      pointer-events: none;
+    }
+    .s-pilot-scale .reason-eyebrow {
+      font-family: var(--sans); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--teal);
+    }
+    .s-pilot-scale .reason-head {
+      font-family: var(--serif); font-size: 20px; font-weight: 700;
+      color: var(--yale); line-height: 1.2;
+    }
+    .s-pilot-scale .reason-body {
+      font-family: var(--body); font-size: 14px;
+      color: #444; line-height: 1.55;
+    }
+    .s-pilot-scale .reason-body strong { color: var(--yale); }
+    .s-pilot-scale .reason-stat {
+      font-family: var(--sans); font-size: 11px;
+      color: var(--teal); font-weight: 700;
+      margin-top: auto; padding-top: 6px;
+      border-top: 1px dashed var(--border);
+      letter-spacing: 0.02em;
+    }
+    .s-pilot-scale .section-divider {
+      grid-column: 1/13;
+      font-family: var(--sans); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+    .s-pilot-scale .phase-grid {
+      grid-column: 1/13;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px;
+    }
+    .s-pilot-scale .phase-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      padding: 24px 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      border-top: 3px solid var(--teal);
+    }
+    .s-pilot-scale .phase-card:nth-child(3) { border-top-color: var(--gold); }
+    .s-pilot-scale .phase-card:nth-child(4) { border-top-color: var(--yale); }
+    .s-pilot-scale .phase-eyebrow {
+      font-family: var(--sans); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .s-pilot-scale .phase-card:nth-child(1) .phase-eyebrow,
+    .s-pilot-scale .phase-card:nth-child(2) .phase-eyebrow { color: var(--teal); }
+    .s-pilot-scale .phase-card:nth-child(3) .phase-eyebrow { color: var(--gold); }
+    .s-pilot-scale .phase-card:nth-child(4) .phase-eyebrow { color: var(--yale); }
+    .s-pilot-scale .phase-when {
+      font-family: var(--serif); font-size: 20px; font-weight: 700;
+      color: var(--yale); line-height: 1.15;
+    }
+    .s-pilot-scale .country-list {
+      font-family: var(--body); font-size: 13px;
+      color: #333; line-height: 1.5;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .s-pilot-scale .country-list span { font-weight: 600; color: var(--yale); }
+    .s-pilot-scale .country-list em { font-style: normal; color: var(--text-dim); font-size: 0.92em; }
+    .s-pilot-scale .revenue-add {
+      font-family: var(--sans); font-size: 11px;
+      color: var(--white); font-weight: 700;
+      background: var(--yale);
+      padding: 6px 10px;
+      border-radius: 4px;
+      text-align: center;
+      margin-top: auto;
+      letter-spacing: 0.02em;
+    }
+    .s-pilot-scale .phase-card:nth-child(3) .revenue-add { background: var(--gold); }
+    .s-pilot-scale .phase-card:nth-child(4) .revenue-add { background: var(--teal); }
+    .s-pilot-scale .ramp-bar {
+      grid-column: 1/13;
+      background: var(--yale); color: white;
+      border-radius: 8px;
+      padding: 20px 28px;
+      font-family: var(--body); font-size: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 20px;
+    }
+    .s-pilot-scale .ramp-bar .ramp-label {
+      font-family: var(--sans); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.6);
+    }
+    .s-pilot-scale .ramp-bar .ramp-target {
+      font-family: var(--serif); font-size: 30px; font-weight: 800;
+      color: var(--teal-light);
+    }
+  </style>
+  <div class="progress-bar"><div class="progress-fill"></div></div>
+  <div class="section-label" style="color:var(--teal);">Roadmap</div>
+  <div class="slide-body fill">
+    <div class="title-zone">
+      <div class="slide-title" style="color:var(--yale);">Why Netherlands &rarr; 35 countries. Pilot to global in 18 months.</div>
+      <div class="slide-subtitle" style="color:var(--text-dim);">Lowest-risk pilot environment &rarr; phased rollout sequenced by regulatory tailwind, partner availability, and revenue weight.</div>
+    </div>
+    <div class="content-zone">
+      <div class="reason-grid">
+        <div class="reason-card">
+          <div class="reason-num">1</div>
+          <div class="reason-eyebrow">Legal Clarity</div>
+          <div class="reason-head">Face-value resale already mandated</div>
+          <div class="reason-body">Netherlands amended consumer protection law in <strong>2008</strong> requiring face-value resale only. Smart tickets comply <em>by design</em> &mdash; not by negotiation.</div>
+          <div class="reason-stat">No regulatory risk during pilot &mdash; only execution risk</div>
+        </div>
+        <div class="reason-card">
+          <div class="reason-num">2</div>
+          <div class="reason-eyebrow">Partner Availability</div>
+          <div class="reason-head">GUTS Tickets is operational and proven</div>
+          <div class="reason-body">Top-5 Dutch ticketer. <strong>700K tickets/year</strong> on GET Protocol since <strong>2019</strong>. Six years of operational data. No cold start required.</div>
+          <div class="reason-stat">Pilot launches with proven infrastructure on Day 1</div>
+        </div>
+        <div class="reason-card">
+          <div class="reason-num">3</div>
+          <div class="reason-eyebrow">Right Market Size</div>
+          <div class="reason-head">Statistical power without spotlight risk</div>
+          <div class="reason-body">17M population, ~15M tickets/year. <strong>Big enough</strong> for statistical significance. <strong>Small enough</strong> to fail safely without PR fallout.</div>
+          <div class="reason-stat">500K-ticket pilot = 3.3% of national volume</div>
+        </div>
+      </div>
+      <div class="section-divider">Phased Global Rollout</div>
+      <div class="phase-grid">
+        <div class="phase-card">
+          <div class="phase-eyebrow">Phase 1 &middot; 2027 H1</div>
+          <div class="phase-when">Adjacent EU rollout</div>
+          <div class="country-list">
+            <div><span>Belgium</span> <em>&middot; &euro;60K/violation since 2023</em></div>
+            <div><span>France</span> <em>&middot; &euro;15K/violation since 2022</em></div>
+            <div><span>Germany</span> <em>&middot; MiCA-compliant</em></div>
+          </div>
+          <div class="revenue-add">~$80M/yr by Q4 2027</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-eyebrow">Phase 2 &middot; 2027 H2</div>
+          <div class="phase-when">Southern EU + UK</div>
+          <div class="country-list">
+            <div><span>Italy</span> <em>&middot; Viagogo &euro;23.5M precedent</em></div>
+            <div><span>Spain, Portugal</span> <em>&middot; EU-aligned</em></div>
+            <div><span>UK</span> <em>&middot; SafeTix replacement</em></div>
+          </div>
+          <div class="revenue-add">~$140M/yr by Q2 2028</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-eyebrow">Phase 3 &middot; 2028 H1</div>
+          <div class="phase-when">US + marketplace</div>
+          <div class="country-list">
+            <div><span>United States</span> <em>&middot; parallel SafeTix transition</em></div>
+            <div><span>Collectible marketplace</span> <em>&middot; goes live</em></div>
+          </div>
+          <div class="revenue-add">~$430M/yr by Q4 2028</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-eyebrow">Phase 4 &middot; 2028 H2</div>
+          <div class="phase-when">APAC + LATAM</div>
+          <div class="country-list">
+            <div><span>South Korea</span> <em>&middot; getTicket precedent</em></div>
+            <div><span>Colombia &rarr; Brazil &rarr; Mexico</span></div>
+            <div><span>Australia, Japan, Singapore</span></div>
+          </div>
+          <div class="revenue-add">~$120M/yr by Q2 2029</div>
+        </div>
+      </div>
+      <div class="ramp-bar">
+        <div>
+          <div class="ramp-label">Cumulative target &mdash; Q4 2028</div>
+          <div style="font-family: var(--body); font-size: 15px; margin-top: 4px;">$968M revenue run-rate &middot; 35-country footprint &middot; collectible marketplace live</div>
+        </div>
+        <div class="ramp-target">$968M</div>
+      </div>
+    </div>
+    <div class="slide-footer">Sources: Dutch Consumer Protection Act 2008 &middot; GUTS Tickets (2019&ndash;2025) &middot; EU national resale legislation &middot; MiCA Regulation 2023/1114 &middot; Goldman Sachs LN/TM coverage</div>
+  </div>
+</div>
+
+<!-- ==================== S17: THREE ASKS — Term Sheet ==================== -->
+<div class="slide s-asks">
+  <style>
+    .s-asks { background: var(--cream); color: var(--yale); }
+    .s-asks .content-zone { align-content: center; row-gap: 20px; }
+    .s-asks .asks-stack {
+      grid-column: 1/13;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .s-asks .ask-row {
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      display: grid; grid-template-columns: 180px 1fr;
+      overflow: hidden;
+    }
+    .s-asks .ask-anchor {
+      background: var(--yale); color: white;
+      padding: 24px 20px;
+      display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    }
+    .s-asks .ask-row:nth-child(2) .ask-anchor { background: var(--gold); }
+    .s-asks .ask-row:nth-child(3) .ask-anchor { background: var(--teal); }
+    .s-asks .ask-num {
+      font-family: var(--sans); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.65); font-weight: 700;
+    }
+    .s-asks .ask-capital {
+      font-family: var(--serif); font-size: 32px; font-weight: 800;
+      color: white; line-height: 1.05;
+    }
+    .s-asks .ask-when {
+      font-family: var(--sans); font-size: 11px;
+      color: rgba(255,255,255,0.85); font-weight: 600;
+    }
+    .s-asks .ask-detail {
+      padding: 18px 24px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px 28px;
+      align-items: start;
+    }
+    .s-asks .ask-field { display: flex; flex-direction: column; gap: 1px; }
+    .s-asks .ask-field.full { grid-column: 1/3; padding-top: 4px; margin-top: 3px; border-top: 1px dashed var(--border); }
+    .s-asks .ask-label {
+      font-family: var(--sans); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-dim); font-weight: 700;
+    }
+    .s-asks .ask-value {
+      font-family: var(--body); font-size: 15px;
+      color: #333; line-height: 1.5;
+    }
+    .s-asks .ask-value.success { color: var(--teal); font-weight: 600; }
+    .s-asks .ask-value.failure { color: var(--red); font-weight: 600; }
+    .s-asks .ask-value strong { color: var(--yale); font-weight: 700; }
+    .s-asks .ask-value.success strong { color: var(--teal); }
+    .s-asks .ask-value.failure strong { color: var(--red); }
+    .s-asks .summary-bar {
+      grid-column: 1/13;
+      background: var(--yale-light); border: 1px solid rgba(0,53,107,0.15);
+      border-radius: 8px;
+      padding: 18px 28px;
+      font-family: var(--body); font-size: 16px;
+      color: var(--yale); line-height: 1.5;
+      text-align: center;
+    }
+    .s-asks .summary-bar strong { color: var(--yale-deep); }
+  </style>
+  <div class="progress-bar"><div class="progress-fill"></div></div>
+  <div class="section-label" style="color:var(--yale);">Recommendation</div>
+  <div class="slide-body fill">
+    <div class="title-zone">
+      <div class="slide-title" style="color:var(--yale);">Three asks. Three gates. Three independent decisions.</div>
+      <div class="slide-subtitle" style="color:var(--text-dim);">Each capital commitment is a stand-alone decision with explicit failure criteria. This is not one $95M bet &mdash; it is three sequenced commitments, each gated by the prior phase&rsquo;s data.</div>
+    </div>
+    <div class="content-zone">
+      <div class="asks-stack">
+        <div class="ask-row">
+          <div class="ask-anchor">
+            <div class="ask-num">Ask 1</div>
+            <div class="ask-capital">$5&ndash;15M</div>
+            <div class="ask-when">Q3 2026</div>
+          </div>
+          <div class="ask-detail">
+            <div class="ask-field">
+              <div class="ask-label">Trigger</div>
+              <div class="ask-value">GET Protocol distressed sale window opens (OPEN parent in liquidity strain following 2024&ndash;25 crypto winter)</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Use of funds</div>
+              <div class="ask-value">100% acquisition cost &middot; 6-engineer team retention bonuses</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Success criteria</div>
+              <div class="ask-value success">Acquisition closes within 90 days &middot; 6-engineer team retained &middot; IP transfer clean</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Failure gate</div>
+              <div class="ask-value failure">GET acquired by competitor &rarr; fall back to <strong>build path ($150M+, 2&ndash;3 yr delay)</strong></div>
+            </div>
+            <div class="ask-field full">
+              <div class="ask-label">Decision authority</div>
+              <div class="ask-value">Board approval (one-time) &middot; CFO due diligence &middot; Antitrust counsel review</div>
+            </div>
+          </div>
+        </div>
+        <div class="ask-row">
+          <div class="ask-anchor">
+            <div class="ask-num">Ask 2</div>
+            <div class="ask-capital">$25&ndash;40M</div>
+            <div class="ask-when">Q1 2027</div>
+          </div>
+          <div class="ask-detail">
+            <div class="ask-field">
+              <div class="ask-label">Trigger</div>
+              <div class="ask-value">GET Protocol integration complete &middot; Netherlands pilot launches at GUTS Tickets</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Use of funds</div>
+              <div class="ask-value">60% pilot operations &middot; 30% engineering &middot; 10% legal/regulatory</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Success criteria</div>
+              <div class="ask-value success"><strong>&lt;0.1% scalp rate</strong> AND <strong>3%+ collectible conversion</strong> within 6 months</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Failure gate</div>
+              <div class="ask-value failure">&lt;2% conversion &rarr; defensive deployment only ($497M model, no memorabilia upside)</div>
+            </div>
+            <div class="ask-field full">
+              <div class="ask-label">Decision authority</div>
+              <div class="ask-value">CEO + CFO sign-off &middot; Quarterly board review &middot; Pilot data dashboard public to board</div>
+            </div>
+          </div>
+        </div>
+        <div class="ask-row">
+          <div class="ask-anchor">
+            <div class="ask-num">Ask 3</div>
+            <div class="ask-capital">$25&ndash;40M</div>
+            <div class="ask-when">2027&ndash;2028</div>
+          </div>
+          <div class="ask-detail">
+            <div class="ask-field">
+              <div class="ask-label">Trigger</div>
+              <div class="ask-value">Pilot success metrics achieved &middot; 3+ flagship artists committed to royalty program</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Use of funds</div>
+              <div class="ask-value">50% global expansion &middot; 30% marketplace build &middot; 20% artist royalty infrastructure</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Success criteria</div>
+              <div class="ask-value success"><strong>$968M revenue run-rate by Q4 2028</strong> &middot; 35-country protected footprint</div>
+            </div>
+            <div class="ask-field">
+              <div class="ask-label">Failure gate</div>
+              <div class="ask-value failure">Country-by-country kill &mdash; underperforming markets paused, capital reallocated</div>
+            </div>
+            <div class="ask-field full">
+              <div class="ask-label">Decision authority</div>
+              <div class="ask-value">Board oversight &middot; Quarterly performance review &middot; Annual strategic recommit</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="summary-bar">
+        <strong>$55&ndash;95M total</strong> across 3 asks = <strong>1.8% of one year&rsquo;s TM ticketing revenue</strong> ($3.1B, LN FY2025). Three independent decisions &mdash; not one bet. Each gate stands alone.
+      </div>
+    </div>
+    <div class="slide-footer">Sources: LN FY2025 10-K &middot; GET Protocol / OPEN distressed valuation analysis &middot; GUTS Tickets partnership terms</div>
+  </div>
+</div>
+
+<!-- ==================== S18: URGENCY — Three Closing Windows ==================== -->
+<div class="slide s-urgency">
+  <style>
+    .s-urgency { background: var(--yale); color: var(--cream); }
+    .s-urgency .slide-title { color: white; }
+    .s-urgency .slide-subtitle { color: rgba(255,255,255,0.55); }
+    .s-urgency .content-zone { align-content: center; row-gap: 26px; }
+    .s-urgency .window-grid {
+      grid-column: 1/13;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
+    }
+    .s-urgency .window-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 32px 26px;
+      display: flex; flex-direction: column; gap: 12px;
+      min-height: 320px;
+      border-top: 3px solid;
+    }
+    .s-urgency .window-card.w1 { border-top-color: var(--red-light); }
+    .s-urgency .window-card.w2 { border-top-color: var(--gold); }
+    .s-urgency .window-card.w3 { border-top-color: var(--teal-light); }
+    .s-urgency .window-eyebrow {
+      font-family: var(--sans); font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .s-urgency .w1 .window-eyebrow { color: var(--red-light); }
+    .s-urgency .w2 .window-eyebrow { color: var(--gold); }
+    .s-urgency .w3 .window-eyebrow { color: var(--teal-light); }
+    .s-urgency .window-head {
+      font-family: var(--serif); font-size: 20px; font-weight: 700;
+      color: white; line-height: 1.2;
+    }
+    .s-urgency .countdown {
+      font-family: var(--serif); font-size: 42px; font-weight: 800;
+      line-height: 1;
+    }
+    .s-urgency .w1 .countdown { color: var(--red-light); }
+    .s-urgency .w2 .countdown { color: var(--gold); }
+    .s-urgency .w3 .countdown { color: var(--teal-light); }
+    .s-urgency .countdown-cap {
+      font-family: var(--sans); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.5);
+    }
+    .s-urgency .stages {
+      display: flex; flex-direction: column; gap: 10px;
+      font-family: var(--body); font-size: 14px;
+      color: rgba(255,255,255,0.85); line-height: 1.55;
+      margin: 8px 0;
+    }
+    .s-urgency .stage {
+      padding-left: 14px;
+      border-left: 2px solid rgba(255,255,255,0.2);
+    }
+    .s-urgency .stage strong { color: white; font-weight: 600; }
+    .s-urgency .cost-of-delay {
+      font-family: var(--sans); font-size: 12px;
+      color: var(--red-light); font-weight: 700;
+      margin-top: auto; padding-top: 10px;
+      border-top: 1px dashed rgba(255,255,255,0.2);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .s-urgency .closer {
+      grid-column: 1/13;
+      font-family: var(--serif); font-style: italic;
+      font-size: 20px;
+      color: white;
+      text-align: center;
+      padding: 18px 36px;
+      background: rgba(0,212,170,0.08);
+      border-left: 4px solid var(--teal-light);
+      border-right: 4px solid var(--teal-light);
+      margin: 0 5%;
+      border-radius: 4px;
+    }
+    .s-urgency .closer strong { color: var(--teal-light); font-weight: 700; font-style: normal; }
+    .s-urgency .slide-footer { border-top-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.45); }
+  </style>
+  <div class="progress-bar"><div class="progress-fill"></div></div>
+  <div class="section-label" style="color:rgba(255,255,255,0.5);">Recommendation</div>
+  <div class="slide-body fill">
+    <div class="title-zone">
+      <div class="slide-title">Three windows are closing simultaneously</div>
+      <div class="slide-subtitle">Inaction is the most expensive option. The cost of waiting is not lost optionality &mdash; it is the permanent loss of TM&rsquo;s monopoly on concert provenance.</div>
+    </div>
+    <div class="content-zone">
+      <div class="window-grid">
+        <div class="window-card w1">
+          <div class="window-eyebrow">Window 1 &middot; Legal</div>
+          <div class="countdown">8 yrs</div>
+          <div class="countdown-cap">DOJ consent decree clock &mdash; started April 2026</div>
+          <div class="window-head">DOJ patience runs out</div>
+          <div class="stages">
+            <div class="stage"><strong>Years 1&ndash;2 (now):</strong> Smart tickets reframe TM as constructive remedy-builder &mdash; not respondent to imposed restructuring.</div>
+            <div class="stage"><strong>Years 3&ndash;5:</strong> If TM hasn&rsquo;t restructured, DOJ imposes stricter remedies. Window for narrative control closes.</div>
+            <div class="stage"><strong>Year 6+:</strong> Forced structural separation &mdash; ticketing spun from Live Nation &mdash; becomes likely.</div>
+          </div>
+          <div class="cost-of-delay">Cost of delay: forced divestiture is permanent value destruction</div>
+        </div>
+        <div class="window-card w2">
+          <div class="window-eyebrow">Window 2 &middot; Regulatory</div>
+          <div class="countdown">12&ndash;18 mo</div>
+          <div class="countdown-cap">tailwind alignment window</div>
+          <div class="window-head">First-mover advantage expires</div>
+          <div class="stages">
+            <div class="stage"><strong>H2 2026:</strong> MiCA ESMA guidance expected &mdash; confirms face-value ticket exemption.</div>
+            <div class="stage"><strong>H1 2027:</strong> CLARITY Act Senate vote &mdash; utility token classification finalized.</div>
+            <div class="stage"><strong>Q4 2027+:</strong> Regulatory landscape stabilizes. Ambiguity = first-mover advantage. After this window, the regulatory tailwind becomes table stakes.</div>
+          </div>
+          <div class="cost-of-delay">Cost of delay: tailwind becomes baseline expectation</div>
+        </div>
+        <div class="window-card w3">
+          <div class="window-eyebrow">Window 3 &middot; Competitive</div>
+          <div class="countdown">18&ndash;24 mo</div>
+          <div class="countdown-cap">head start vs. crypto-native ticketers</div>
+          <div class="window-head">Provenance monopoly ceded</div>
+          <div class="stages">
+            <div class="stage"><strong>Now:</strong> KYD Labs ($7M, a16z-backed, Solana ticketing) scaling US venue presence; XP ($6.2M, 34M ticket inventory) building secondary marketplace.</div>
+            <div class="stage"><strong>Q3 2026 &rarr; 2028:</strong> 18&ndash;24 month head start for TM if action begins now.</div>
+            <div class="stage"><strong>Q4 2028+:</strong> Market crowded. GET Protocol likely acquired by competitor. TM forced to build at $150M+, 2-year delay.</div>
+          </div>
+          <div class="cost-of-delay">Cost of delay: provenance monopoly ceded permanently</div>
+        </div>
+      </div>
+      <div class="closer">
+        The status quo isn&rsquo;t a baseline &mdash; it&rsquo;s a <strong>depreciating asset</strong>. Every quarter of delay reduces the upside ceiling and increases the floor cost.
+      </div>
+    </div>
+    <div class="slide-footer">Sources: DOJ v. Live Nation consent decree (Apr 2026) &middot; MiCA ESMA timeline &middot; CLARITY Act H.R.3633 &middot; CoinDesk (KYD Labs) &middot; TechFundingNews (XP)</div>
+  </div>
+</div>
+
+<div class="nav-hint">&larr; &rarr; arrow keys to navigate</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const TOTAL = slides.length;
+let current = 0;
+const animated = new Set();
+
+/* Progress bar colors per slide */
+const slideColors = [
+  'var(--yale)',    /* S1  — Cover */
+  'var(--red)',     /* S2  — Three Crises */
+  'var(--teal)',    /* S3  — What Is Smart Ticket */
+  'var(--teal)',    /* S4  — Comparison */
+  'var(--teal)',    /* S5  — Revenue Pillars */
+  'var(--teal)',    /* S6  — SafeTix Liability */
+  'var(--teal)',    /* S7  — Defensible Architecture */
+  'var(--teal)',    /* S8  — VP2 International */
+  'var(--teal)',    /* S9  — Software-Only */
+  'var(--gold)',    /* S10 — Provenance Asset */
+  'var(--gold)',    /* S11 — Ticket Lives On */
+  'var(--gold)',    /* S12 — Revenue Model */
+  'var(--yale)',    /* S13 — Walmart Model */
+  'var(--gold)',    /* S14 — History (SafeTix) */
+  'var(--yale)',    /* S15 — Decision Matrix */
+  'var(--teal)',    /* S16 — Pilot + Scale */
+  'var(--yale)',    /* S17 — Three Asks */
+  'var(--red-light)' /* S18 — Urgency */
+];
+
+/* Auto-generate slide counters + update progress bars */
+slides.forEach((s, i) => {
+  /* Slide counter */
+  if (!s.querySelector('.slide-counter')) {
+    const c = document.createElement('div');
+    c.className = 'slide-counter';
+    c.textContent = (i + 1) + ' / ' + TOTAL;
+    const isDark = s.classList.contains('s1') || s.classList.contains('s-urgency');
+    c.style.color = isDark ? 'rgba(255,255,255,0.25)' : 'var(--yale)';
+    s.appendChild(c);
+  }
+
+  /* Progress bar */
+  let pb = s.querySelector('.progress-bar');
+  if (!pb && i > 0) {
+    pb = document.createElement('div');
+    pb.className = 'progress-bar';
+    s.insertBefore(pb, s.firstChild);
+  }
+  if (pb) {
+    const pct = ((i + 1) / TOTAL * 100).toFixed(1);
+    const col = slideColors[i] || 'var(--teal)';
+    pb.innerHTML = '<div class="progress-fill" style="width:' + pct + '%; background:' + col + ';"></div>';
+  }
+});
+
+function show(i) {
+  if (i < 0 || i >= TOTAL) return;
+  slides[current].classList.remove('active');
+  current = i;
+  slides[current].classList.add('active');
+  animateSlide(current);
+}
+
+function animateSlide(idx) {
+  if (animated.has(idx)) return;
+  animated.add(idx);
+  const s = slides[idx];
+
+  /* Bar fills */
+  s.querySelectorAll('.bar-fill[data-width]').forEach(function(el, i) {
+    setTimeout(function() { el.style.width = el.dataset.width; }, 120 + i * 80);
+  });
+
+  /* Scenario fills */
+  s.querySelectorAll('.sc-fill[data-width]').forEach(function(el, i) {
+    setTimeout(function() { el.style.width = el.dataset.width; }, 150 + i * 120);
+  });
+
+  /* Grade bars */
+  s.querySelectorAll('.grade-inner[data-height]').forEach(function(el, i) {
+    setTimeout(function() { el.style.height = el.dataset.height; }, 150 + i * 100);
+  });
+
+  /* Waterfall bars */
+  s.querySelectorAll('.wf-bar[data-height]').forEach(function(el, i) {
+    setTimeout(function() { el.style.height = el.dataset.height; }, 150 + i * 120);
+  });
+
+  /* Donut arcs */
+  s.querySelectorAll('.donut-arc').forEach(function(el, i) {
+    var pct = parseFloat(el.dataset.pct) || 0;
+    var offset = parseFloat(el.dataset.offset) || 0;
+    var C = 2 * Math.PI * 25;
+    el.style.strokeDasharray = '0 ' + C;
+    el.style.strokeDashoffset = -((offset / 100) * C);
+    setTimeout(function() {
+      el.style.strokeDasharray = ((pct / 100) * C) + ' ' + (C - (pct / 100) * C);
+    }, 250 + i * 150);
+  });
+}
+
+/* Fire animation on first slide */
+setTimeout(function() { animateSlide(0); }, 150);
+
+/* Keyboard navigation */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); show(current + 1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); show(current - 1); }
+});
+
+/* Click navigation with tooltip guard */
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.tip') || e.target.closest('.bar-track') || e.target.closest('.stat-card') || e.target.closest('.geo-row') || e.target.closest('.req-row') || e.target.closest('.grade-col') || e.target.closest('.sc-track') || e.target.closest('.rev-seg')) return;
+  if (e.clientX > window.innerWidth / 2) show(current + 1);
+  else show(current - 1);
+});
+</script>
+</body>
+</html>
